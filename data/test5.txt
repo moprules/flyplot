@@ -1,0 +1,8 @@
+name: Test
+type: 3D
+x: a | m
+y: asdfgsdfgsdfg  | m
+z: a | m
+coords:
+0.010000 -> 0 0 0
+0.020000 -> -3000 3000 3000
