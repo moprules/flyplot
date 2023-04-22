@@ -182,15 +182,28 @@ class Graph3DWidjet(gl.GLViewWidget):
         # self.__testDebug()
 
     def mouseMoveEvent(self, ev):
-
         lpos = ev.position() if hasattr(ev, 'position') else ev.localPos()
+        if not hasattr(self, 'mousePos'):
+            self.mousePos = lpos
         diff = lpos - self.mousePos
-        self.mousePos = lpos
 
-        if ev.buttons() == QtCore.Qt.MouseButton.RightButton:
-            self.orbit(-diff.x(), diff.y())
+        x = diff.x()
+        y = diff.y()
+
+        dd = max(x, y, key=lambda num: abs(num))
+
+        if dd:
+            x /= abs(dd)
+            y /= abs(dd)
+
+        panScale = 8
+        rotScale = 4
+
+        self.mousePos = lpos
+        if ev.buttons() == QtCore.Qt.MouseButton.LeftButton:
+            self.orbit(-x*rotScale, y*rotScale)
         elif ev.buttons() == QtCore.Qt.MouseButton.MiddleButton:
-            self.pan(diff.x(), diff.y(), 0, relative='view')
+            self.pan(x*panScale, y*panScale, 0, relative='view')
 
         self.paintGridByDirection()
 
@@ -990,7 +1003,7 @@ class Menu3DLayout(QtWidgets.QVBoxLayout):
         buttonClean.clicked.connect(self.cleanChart)
         self.addWidget(buttonClean)
 
-    @Slot()
+    @ Slot()
     def saveChart(self):
         img = self.graph.readCutQImage()
         if img:
@@ -1004,7 +1017,7 @@ class Menu3DLayout(QtWidgets.QVBoxLayout):
             msg_box.setText("На графике ничего нет")
             msg_box.exec()
 
-    @Slot()
+    @ Slot()
     def loadChart(self):
         dialog = QtWidgets.QFileDialog(
             parent=None,
@@ -1017,15 +1030,15 @@ class Menu3DLayout(QtWidgets.QVBoxLayout):
             self.graph.addChart(data_file)
             self.parentWidget().setWindowTitle(data_file)
 
-    @Slot()
+    @ Slot()
     def onDefPosClick(self):
         self.graph.goDefView()
 
-    @Slot()
+    @ Slot()
     def onTestButton(self):
         self.graph.paintAxis("y")
 
-    @Slot()
+    @ Slot()
     def cleanChart(self):
         self.graph.Clean()
 
