@@ -718,9 +718,20 @@ class Graph3DWidjet(gl.GLViewWidget):
     def addChart(self, data_file: str):
         chart = self.__parseData(data_file)
         if chart:
+            stdcolors = "kbrgy"
+            cindex = 0
+            if self.graphs:
+                # Предыдущий цвет
+                lcolor = self.graphs[-1]["color"]
+                # Индекс предыдущего цвета
+                lindex = stdcolors.index(lcolor)
+                # Индекс текущего цвета - следующий цвет
+                cindex = (lindex + 1) % len(stdcolors)
+            # Задаём цвет графика
+            chart["color"] = stdcolors[cindex]
             # Создаём объект 3D графика
             plt = gl.GLLinePlotItem(
-                pos=chart["coords"], color=pg.mkColor('b'), width=1, antialias=True)
+                pos=chart["coords"], color=pg.mkColor(chart["color"]), width=1, antialias=True)
             # Добавляем его на наш виджет
             self.addItem(plt)
             self.graphs.append(chart)
