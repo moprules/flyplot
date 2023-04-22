@@ -715,6 +715,18 @@ class Graph3DWidjet(gl.GLViewWidget):
             self.__paintLabelZ()
             self.__paintValuesZ()
 
+    def updChart(self, chart_name, pos):
+        for chart in self.graphs:
+            if chart["name"] == chart_name:
+                break
+        else:
+            return
+
+        plt: gl.GLLinePlotItem = chart["plt"]
+
+        plt.setData(pos=pos, color=pg.mkColor(
+            chart["color"]), width=1, antialias=True)
+
     def addChart(self, data_file: str):
         chart = self.__parseData(data_file)
         if chart:
@@ -734,6 +746,7 @@ class Graph3DWidjet(gl.GLViewWidget):
                 pos=chart["coords"], color=pg.mkColor(chart["color"]), width=1, antialias=True)
             # Добавляем его на наш виджет
             self.addItem(plt)
+            chart["plt"] = plt
             self.graphs.append(chart)
 
             # Перестраиваем сетку под новый график
@@ -1047,7 +1060,12 @@ class Menu3DLayout(QtWidgets.QVBoxLayout):
 
     @ Slot()
     def onTestButton(self):
-        self.graph.paintAxis("y")
+        for chart in self.graph.graphs:
+            if chart["name"] == "Matlab":
+                break
+        else:
+            return
+        self.graph.removeItem(chart["plt"])
 
     @ Slot()
     def cleanChart(self):
