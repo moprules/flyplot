@@ -6,6 +6,8 @@ import pyqtgraph.opengl as gl
 from PySide6.QtCore import Slot
 from PySide6 import QtWidgets, QtGui, QtCore
 
+PKG_DIR = os.path.dirname(os.path.abspath(__file__))
+
 
 class Text3DItem(gl.GLImageItem):
     def __init__(self,
@@ -126,6 +128,39 @@ class Text3DItem(gl.GLImageItem):
         return data
 
 
+class GraphContextMenu(QtWidgets.QMenu):
+    def __init__(self, *args, **kargs):
+        super().__init__(*args, **kargs)
+
+        self.actions = {}
+
+        # Пункт Вид по умолчанию
+        self.actions["home"] = QtGui.QAction("Вид по умолчанию", self)
+        # Тригеры настраиваются в композирующем классе
+        # self.actions["defView"].triggered.connect(self.action1)
+        icon = QtGui.QPixmap(os.path.join(PKG_DIR, "icons/home.svg"))
+        self.actions["home"].setIcon(icon)
+        self.addAction(self.actions["home"])
+
+        # Пункт Очистить
+        self.actions["clean"] = QtGui.QAction("Очистить", self)
+        icon = QtGui.QPixmap(os.path.join(PKG_DIR, "icons/clean.svg"))
+        self.actions["clean"].setIcon(icon)
+        self.addAction(self.actions["clean"])
+
+        # Пункт Скопировать
+        self.actions["copy"] = QtGui.QAction("Копировать", self)
+        icon = QtGui.QPixmap(os.path.join(PKG_DIR, "icons/copy.svg"))
+        self.actions["copy"].setIcon(icon)
+        self.addAction(self.actions["copy"])
+
+        # Пункт Сохранить
+        self.actions["save"] = QtGui.QAction("Сохранить", self)
+        icon = QtGui.QPixmap(os.path.join(PKG_DIR, "icons/save.svg"))
+        self.actions["save"].setIcon(icon)
+        self.addAction(self.actions["save"])
+
+
 class Graph3DWidjet(gl.GLViewWidget):
     def __init__(self, data_file="", *args, **kargs):
         super().__init__(*args, **kargs)
@@ -158,6 +193,15 @@ class Graph3DWidjet(gl.GLViewWidget):
 
         # Ставим вид по умолчанию
         self.goDefView()
+
+        self.ct_menu = GraphContextMenu()
+        self.ct_menu.actions["home"].triggered.connect(self.goDefView)
+        self.ct_menu.actions["clean"].triggered.connect(self.Clean)
+        self.ct_menu.actions["copy"].triggered.connect(self.keyCtrlCAction)
+        self.ct_menu.actions["save"].triggered.connect(self.saveAction)
+
+    def contextMenuEvent(self, ev: QtGui.QContextMenuEvent):
+        self.ct_menu.exec(self.mapToGlobal(ev.pos()))
 
         # self.__testDebug()
 
@@ -940,15 +984,33 @@ class Graph3DWidjet(gl.GLViewWidget):
         return None
 
     def keyPressEvent(self, event: QtGui.QKeyEvent):
-        super().keyPressEvent(event)
-
         # Если нажали Ctrl + C
         if event.key() == QtCore.Qt.Key_C and event.modifiers() == QtCore.Qt.ControlModifier:  # type: ignore
-            # Если получится копируем изображение в буфер обмена
-            img = self.readCutQImage()
-            if img:
-                QtWidgets.QApplication.clipboard().setImage(img)
+            self.keyCtrlCAction()
+        super().keyPressEvent(event)
 
+    @ Slot()
+    def keyCtrlCAction(self):
+        # Если получится копируем изображение в буфер обмена
+        img = self.readCutQImage()
+        if img:
+            QtWidgets.QApplication.clipboard().setImage(img)
+
+    @ Slot()
+    def saveAction(self):
+        img = self.readCutQImage()
+        if img:
+            fileName = QtWidgets.QFileDialog.getSaveFileName(
+                None, "Save File", "test.png", "Images (*.png *.jpg)")[0]  # type: ignore
+            if fileName:
+                img.save(fileName)
+        else:
+            msg_box = QtWidgets.QMessageBox()
+            msg_box.setWindowTitle("Ошибка")
+            msg_box.setText("На графике ничего нет")
+            msg_box.exec()
+
+    @ Slot()
     def goDefView(self):
         # Верхняя точка куба сетки
         pos = {ax: self.axis[ax]["amax"] for ax in "xyz"}
@@ -1007,10 +1069,6 @@ class Menu3DLayout(QtWidgets.QVBoxLayout):
         buttonAddGraph.clicked.connect(self.loadChart)
         self.addWidget(buttonAddGraph)
 
-        buttonCamera = QtWidgets.QPushButton(text="Вид по умолчанию")
-        buttonCamera.clicked.connect(self.onDefPosClick)
-        self.addWidget(buttonCamera)
-
         testButton = QtWidgets.QPushButton(text="Тест")
         testButton.clicked.connect(self.onTestButton)
         self.addWidget(testButton)
@@ -1018,28 +1076,6 @@ class Menu3DLayout(QtWidgets.QVBoxLayout):
         spacer = QtWidgets.QSpacerItem(
             0, 0, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)  # type: ignore
         self.addSpacerItem(spacer)
-
-        buttonSave = QtWidgets.QPushButton(text="save")
-        buttonSave.clicked.connect(self.saveChart)
-        self.addWidget(buttonSave)
-
-        buttonClean = QtWidgets.QPushButton(text="clean")
-        buttonClean.clicked.connect(self.cleanChart)
-        self.addWidget(buttonClean)
-
-    @ Slot()
-    def saveChart(self):
-        img = self.graph.readCutQImage()
-        if img:
-            fileName = QtWidgets.QFileDialog.getSaveFileName(
-                None, "Save File", "test.png", "Images (*.png *.jpg)")[0]  # type: ignore
-            if fileName:
-                img.save(fileName)
-        else:
-            msg_box = QtWidgets.QMessageBox()
-            msg_box.setWindowTitle("Ошибка")
-            msg_box.setText("На графике ничего нет")
-            msg_box.exec()
 
     @ Slot()
     def loadChart(self):
@@ -1050,13 +1086,8 @@ class Menu3DLayout(QtWidgets.QVBoxLayout):
         dialog.setFileMode(QtWidgets.QFileDialog.AnyFile)  # type: ignore
         dialog.setViewMode(QtWidgets.QFileDialog.Detail)  # type: ignore
         if dialog.exec():
-            data_file = dialog.selectedFiles()[0]
-            self.graph.addChart(data_file)
-            self.parentWidget().setWindowTitle(data_file)
-
-    @ Slot()
-    def onDefPosClick(self):
-        self.graph.goDefView()
+            for data_file in dialog.selectedFiles():
+                self.graph.addChart(data_file)
 
     @ Slot()
     def onTestButton(self):
@@ -1066,10 +1097,6 @@ class Menu3DLayout(QtWidgets.QVBoxLayout):
         else:
             return
         self.graph.removeItem(chart["plt"])
-
-    @ Slot()
-    def cleanChart(self):
-        self.graph.Clean()
 
 
 class Graph3DWindow(QtWidgets.QWidget):
@@ -1090,6 +1117,3 @@ class Graph3DWindow(QtWidgets.QWidget):
         self.__layout.addLayout(self.menu)
         # Приклеиваем компоненты к верху виджета
         self.__layout.setAlignment(QtCore.Qt.AlignTop)  # type: ignore
-
-        # Задаём заголовок виджета
-        self.setWindowTitle(data_file)
