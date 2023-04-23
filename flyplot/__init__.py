@@ -730,7 +730,7 @@ class Graph3DWidjet(gl.GLViewWidget):
     def addChart(self, data_file: str):
         chart = self.__parseData(data_file)
         if chart:
-            stdcolors = "kbrgy"
+            stdcolors = "brkgy"
             cindex = 0
             if self.graphs:
                 # Предыдущий цвет
