@@ -230,6 +230,7 @@ class Graph3DWidjet(gl.GLViewWidget):
         if hasattr(self, "menu"):
             self.menu.listCharts.clear()
             self.menu.listCharts.hide()
+            self.menu.colorButton.hide()
 
         # self.__testDebug()
 
@@ -824,24 +825,23 @@ class Graph3DWidjet(gl.GLViewWidget):
             # Переходим в вид по умолчанию, чтобы были видны
             # Все графики в пространстве
             self.goDefView()
-    
+
     def reDraw(self):
         # Перестраиваем сетку под новый график
-            self.recalcAxis()
-            self.paintGrid()
+        self.recalcAxis()
+        self.paintGrid()
 
-            for ax in "xyz":
-                # Пересчитываем подписи для оси
-                self.recalcLabelAxis(ax)
-                # Пересчитываем подписи делений оси
-                self.recalcValuesAxis(ax)
-                # Наконец рисуем саму ось
-                self.paintAxis(ax)
+        for ax in "xyz":
+            # Пересчитываем подписи для оси
+            self.recalcLabelAxis(ax)
+            # Пересчитываем подписи делений оси
+            self.recalcValuesAxis(ax)
+            # Наконец рисуем саму ось
+            self.paintAxis(ax)
 
-            # Переходим в вид по умолчанию, чтобы были видны
-            # Все графики в пространстве
-            self.goDefView()
-
+        # Переходим в вид по умолчанию, чтобы были видны
+        # Все графики в пространстве
+        self.goDefView()
 
     def __parseData(self, data_file: str):
         chart = {}
@@ -923,6 +923,7 @@ class Graph3DWidjet(gl.GLViewWidget):
             self.menu.listCharts.add_chart(chart)
             if self.isVisible():
                 self.menu.listCharts.show()
+                self.menu.colorButton.show()
 
         return chart
 
@@ -1125,7 +1126,9 @@ class ChartListWidget(QtWidgets.QListWidget):
         super().__init__(*args, **kargs)
         self.graph = graph
         self.itemEntered.connect(self.item_hover)
-    
+        self.setSizePolicy(QtWidgets.QSizePolicy.Minimum,
+                           QtWidgets.QSizePolicy.Minimum)
+
     def add_chart(self, chart: dict):
         # Кнопка убрать график
         button = QtWidgets.QPushButton()
@@ -1134,9 +1137,10 @@ class ChartListWidget(QtWidgets.QListWidget):
         button.setFlat(True)
         button.setSizePolicy(QtWidgets.QSizePolicy.Fixed,
                              QtWidgets.QSizePolicy.Fixed)
-            
 
         label = QtWidgets.QLabel(chart["short_path"])
+        label.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding,
+                            QtWidgets.QSizePolicy.MinimumExpanding)
 
         item_layout = QtWidgets.QHBoxLayout()
         item_layout.setContentsMargins(0, 0, 0, 0)
@@ -1150,9 +1154,8 @@ class ChartListWidget(QtWidgets.QListWidget):
         self.setCurrentRow(self.count()-1)
         button.clicked.connect(partial(self.remove_item, item))
 
-
     def item_hover(self, item):
-        print("lol")
+        pass
 
     def remove_item(self, item):
         row = self.row(item)
@@ -1164,6 +1167,7 @@ class ChartListWidget(QtWidgets.QListWidget):
         if not self.count():
             # Скрываем список графиков
             self.hide()
+            self.graph.menu.colorButton.hide()
             # Очищаем график
             self.graph.Clean()
         else:
@@ -1178,19 +1182,27 @@ class Menu3DLayout(QtWidgets.QVBoxLayout):
 
         self.setAlignment(QtCore.Qt.AlignTop)  # type: ignore
 
-        buttonAddGraph = QtWidgets.QPushButton(text="Добавить График")
+        buttonAddGraph = QtWidgets.QPushButton(text="Добавить")
+        icon = QtGui.QPixmap(os.path.join(PKG_DIR, "icons/add.svg"))
+        buttonAddGraph.setIcon(icon)
         buttonAddGraph.clicked.connect(self.loadChart)
         self.addWidget(buttonAddGraph)
 
-        testButton = QtWidgets.QPushButton(text="Тест")
-        testButton.clicked.connect(self.onTestButton)
-        self.addWidget(testButton)
+        # testButton = QtWidgets.QPushButton(text="Тест")
+        # testButton.clicked.connect(self.onTestButton)
+        # self.addWidget(testButton)
 
         self.listCharts = ChartListWidget(self.graph)
         self.addWidget(self.listCharts)
+        self.colorButton = QtWidgets.QPushButton("Цвет графика")
+        icon = QtGui.QPixmap(os.path.join(PKG_DIR, "icons/color.svg"))
+        self.colorButton.setIcon(icon)
+        self.colorButton.setFlat(True)
+        self.colorButton.clicked.connect(self.onColorButton)
+        self.addWidget(self.colorButton)
 
         spacer = QtWidgets.QSpacerItem(
-            0, 0, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)  # type: ignore
+            0, 0, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)  # type: ignore
         self.addSpacerItem(spacer)
 
     @ Slot()
@@ -1214,10 +1226,27 @@ class Menu3DLayout(QtWidgets.QVBoxLayout):
             return
         self.graph.removeItem(chart["plt"])
 
+    @Slot()
+    def onColorButton(self):
+        colorDlg = QtWidgets.QColorDialog()
+        i = self.listCharts.currentRow()
+        chart = self.graph.graphs[i]
+        last_color = pg.mkColor(chart["color"])
+        colorDlg.setCurrentColor(last_color)
+        if colorDlg.exec() == QtWidgets.QColorDialog.Accepted:
+            cur_color = colorDlg.selectedColor()
+            chart["color"] = cur_color
+            plt: gl.GLLinePlotItem = chart["plt"]
+            plt.setData(color=cur_color, width=1, antialias=True)
+
 
 class Graph3DWindow(QtWidgets.QWidget):
     def __init__(self, data_file: str = "", *args, **kargs):
         super().__init__(*args, **kargs)
+
+        self.setWindowTitle("Просмотр графиков")
+        icon = QtGui.QPixmap(os.path.join(PKG_DIR, "icons/grafic.svg"))
+        self.setWindowIcon(icon)
 
         # названия файла с данными для графика
         self.data_file = data_file
@@ -1226,18 +1255,18 @@ class Graph3DWindow(QtWidgets.QWidget):
 
         # Задаём лаяут по умолчанию
         self.__layout = QtWidgets.QHBoxLayout(self)
-        # Добавим туда сам график
-        self.__layout.addWidget(self.graph, 1)
+        
         self.menu = Menu3DLayout(self.graph)
         self.graph.setMenu(self.menu)
+        # Добавим туда меню для графика
+        self.__layout.addLayout(self.menu)
+        # Добавим туда сам график
+        self.__layout.addWidget(self.graph, 1)
+        # Приклеиваем компоненты к верху виджета
+        self.__layout.setAlignment(QtCore.Qt.AlignTop)  # type: ignore
 
         if self.data_file:
             self.graph.addChart(self.data_file)
-
-        # Добавим туда меню для графика
-        self.__layout.addLayout(self.menu)
-        # Приклеиваем компоненты к верху виджета
-        self.__layout.setAlignment(QtCore.Qt.AlignTop)  # type: ignore
 
         # Разрешить перетаскивание
         self.setAcceptDrops(True)
