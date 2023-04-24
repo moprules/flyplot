@@ -272,7 +272,7 @@ class Graph3DWidjet(gl.GLViewWidget):
             # Создаем одну из плоскостей 3D сетки
             self.grid[gg] = gl.GLGridItem()
             # Задаём цвет - черный и немного прозрачный
-            self.grid[gg].setColor((0, 0, 0, 50))
+            self.grid[gg].setColor((0, 0, 0, 255))
             # Добавляем объект сетки на 3D сцену
             self.addItem(self.grid[gg])
 
@@ -297,14 +297,20 @@ class Graph3DWidjet(gl.GLViewWidget):
                 axi["min"] = min(chart["axis"][ax]["min"], axi["min"])
                 axi["max"] = max(chart["axis"][ax]["max"], axi["max"])
 
+        # Размер решётки окрургляем до сотен
+        for ax in "xyz":
+            axi = self.axis[ax]
+            axi["space"] = (axi["max"] - axi["min"])/10
+            axi["space"] = np.ceil(axi["space"]/100)*100
+
         # Округляем эти значения с точность шага сетки
         for ax in "xyz":
             axi = self.axis[ax]
             space = axi["space"]
             for mod in ("min", "max"):
                 val = axi[mod]
-                sign = 1 if val >= 0 else -1
-                val = math.ceil(abs(val)/space)*space
+                sign = np.sign(val)
+                val = np.ceil(abs(val)/space)*space
                 axi[mod] = sign*val
 
         for ax in "xyz":
@@ -322,6 +328,15 @@ class Graph3DWidjet(gl.GLViewWidget):
             axi["direction"] = 1
             if axi["amin"] == axi["max"]:
                 axi["direction"] = -1
+
+            # Параметры текста
+            # Делений оси
+            axi["value"]["size"] = axi["space"]*0.6
+            axi["value"]["offset"] = axi["space"]*0.4
+            # Подписей осей
+            axi["label"]["size"] = axi["space"]
+            axi["label"]["offset"] = 2*axi["space"]
+            axi["label"]["step"] = axi["space"]
 
     def paintGridByDirection(self):
         """
@@ -784,12 +799,16 @@ class Graph3DWidjet(gl.GLViewWidget):
             self.paintGrid()
 
             for ax in "xyz":
+                # Пересчитываем подписи для оси
+                self.recalcLabelAxis(ax)
+                # Собираем ноую подпись
                 d = chart["axis"][ax]
                 axiName = d["name"] + ", " + d["dim"]
-                # Добавляем новые подписи оси нужно
+                # Добавляем новую подпись оси если нужно
                 self.addLabel(ax, axiName)
-                # Пересчитываем подписи делений
+                # Пересчитываем подписи делений оси
                 self.recalcValuesAxis(ax)
+                # Наконец рисуем саму ось
                 self.paintAxis(ax)
 
             # Переходим в вид по умолчанию, чтобы были видны
@@ -798,7 +817,7 @@ class Graph3DWidjet(gl.GLViewWidget):
 
     def __parseData(self, data_file: str):
         chart = {}
-        with open(data_file) as f:
+        with open(data_file, "r", encoding="utf-8") as f:
             chart["name"] = f.readline().split("name: ")[-1].strip()
 
             chart["type"] = f.readline().split("type: ")[-1].strip()
@@ -879,8 +898,6 @@ class Graph3DWidjet(gl.GLViewWidget):
             tObj = Text3DItem(text, size=size)
             self.addItem(tObj)
             label["mas"].append(tObj)
-            # Перерисовые подписи оси
-            self.paintAxis(ax)
 
     def recalcValuesAxis(self, ax):
         # Обновляем значения делений осей
@@ -891,14 +908,13 @@ class Graph3DWidjet(gl.GLViewWidget):
         # Очищаем список подписей
         axi["value"]["mas"].clear()
         # Вычисляем новое количество делений
-        target_cnt = axi["size"] // axi["space"] + 1
+        target_cnt = int(axi["size"] // axi["space"] + 1)
         # добавляем нужно количетсво меток с текстом
         # Первое значение будет минимумов
         first = axi["min"]
         # Получаем размер текста меток
         size = axi["value"]["size"]
         for i in range(target_cnt):
-            # for i in range(1):
             # Получаем значение деления до 2 сотых
             val = round(first + i * axi["space"], 2)
             # преобразуем в текст
@@ -909,6 +925,26 @@ class Graph3DWidjet(gl.GLViewWidget):
             axi["value"]["mas"].append(axiVal)
             # Добаляем подпись деления на график
             self.addItem(axiVal)
+
+    def recalcLabelAxis(self, ax):
+        # Обновляем подписи оси ax
+        axi = self.axis[ax]
+        # Удаляем все подписи на оси
+        label_text = []
+        for l in axi["label"]["mas"]:
+            label_text.append(l.text)
+            self.removeItem(l)
+        # Очищаем список подписей
+        axi["label"]["mas"].clear()
+
+        size = axi["label"]["size"]
+        for text in label_text:
+            # создаём подпись оси
+            label = Text3DItem(text, size=size)
+            # Добавляем в массив для отслеживания
+            axi["label"]["mas"].append(label)
+            # Добаляем подпись на график
+            self.addItem(label)
 
     def readCutQImage(self) -> QtGui.QImage | None:
         """
