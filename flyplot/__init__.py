@@ -769,15 +769,7 @@ class Graph3DWidjet(gl.GLViewWidget):
         chart = self.__parseData(data_file)
         if chart:
             stdcolors = "brkgy"
-            cindex = 0
-            if self.graphs:
-                # Предыдущий цвет
-                lcolor = self.graphs[-1]["color"]
-                # Индекс предыдущего цвета
-                lindex = stdcolors.index(lcolor)
-                # Индекс текущего цвета - следующий цвет
-                cindex = (lindex + 1) % len(stdcolors)
-            # Задаём цвет графика
+            cindex = len(self.graphs) % len(stdcolors)
             chart["color"] = stdcolors[cindex]
             # Создаём объект 3D графика
             plt = gl.GLLinePlotItem(
@@ -1111,3 +1103,16 @@ class Graph3DWindow(QtWidgets.QWidget):
         self.__layout.addLayout(self.menu)
         # Приклеиваем компоненты к верху виджета
         self.__layout.setAlignment(QtCore.Qt.AlignTop)  # type: ignore
+
+        self.setAcceptDrops(True)
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.accept()
+        else:
+            event.ignore()
+
+    def dropEvent(self, event):
+        for url in event.mimeData().urls():
+            file = url.toLocalFile()
+            self.graph.addChart(file)
