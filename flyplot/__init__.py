@@ -5,6 +5,7 @@ import pyqtgraph as pg
 import pyqtgraph.opengl as gl
 from PySide6.QtCore import Slot
 from PySide6 import QtWidgets, QtGui, QtCore
+from functools import partial
 
 PKG_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -227,8 +228,8 @@ class Graph3DWidjet(gl.GLViewWidget):
         self.goDefView()
 
         if hasattr(self, "menu"):
-            self.menu.comboListCharts.clear()
-            self.menu.comboListCharts.hide()
+            self.menu.listCharts.clear()
+            self.menu.listCharts.hide()
 
         # self.__testDebug()
 
@@ -823,10 +824,34 @@ class Graph3DWidjet(gl.GLViewWidget):
             # Переходим в вид по умолчанию, чтобы были видны
             # Все графики в пространстве
             self.goDefView()
+    
+    def reDraw(self):
+        # Перестраиваем сетку под новый график
+            self.recalcAxis()
+            self.paintGrid()
+
+            for ax in "xyz":
+                # Пересчитываем подписи для оси
+                self.recalcLabelAxis(ax)
+                # Пересчитываем подписи делений оси
+                self.recalcValuesAxis(ax)
+                # Наконец рисуем саму ось
+                self.paintAxis(ax)
+
+            # Переходим в вид по умолчанию, чтобы были видны
+            # Все графики в пространстве
+            self.goDefView()
+
 
     def __parseData(self, data_file: str):
         chart = {}
-        chart["file"] = os.path.abspath(data_file)
+        chart["path"] = os.path.abspath(data_file)
+        # получение имени файла
+        filename = os.path.basename(chart["path"])
+        # получение имени папки
+        dirname = os.path.basename(os.path.dirname(chart["path"]))
+        # объединение имени папки и имени файла
+        chart["short_path"] = os.path.join(dirname, filename)
         with open(data_file, "r", encoding="utf-8") as f:
             chart["name"] = f.readline().split("name: ")[-1].strip()
 
@@ -895,15 +920,9 @@ class Graph3DWidjet(gl.GLViewWidget):
             chart["axis"]["z"]["max"] = p2[2]
 
         if hasattr(self, "menu"):
-            # получение имени файла
-            filename = os.path.basename(chart["file"])
-            # получение имени папки
-            dirname = os.path.basename(os.path.dirname(chart["file"]))
-            # объединение имени папки и имени файла
-            short_path = os.path.join(dirname, filename)
-            self.menu.comboListCharts.addItem(short_path)
+            self.menu.listCharts.add_chart(chart)
             if self.isVisible():
-                self.menu.comboListCharts.show()
+                self.menu.listCharts.show()
 
         return chart
 
@@ -1100,6 +1119,57 @@ class Graph3DWidjet(gl.GLViewWidget):
         self.paintGridByDirection()
 
 
+class ChartListWidget(QtWidgets.QListWidget):
+
+    def __init__(self, graph: Graph3DWidjet, *args, **kargs):
+        super().__init__(*args, **kargs)
+        self.graph = graph
+        self.itemEntered.connect(self.item_hover)
+    
+    def add_chart(self, chart: dict):
+        # Кнопка убрать график
+        button = QtWidgets.QPushButton()
+        icon = QtGui.QPixmap(os.path.join(PKG_DIR, "icons/del.svg"))
+        button.setIcon(icon)
+        button.setFlat(True)
+        button.setSizePolicy(QtWidgets.QSizePolicy.Fixed,
+                             QtWidgets.QSizePolicy.Fixed)
+            
+
+        label = QtWidgets.QLabel(chart["short_path"])
+
+        item_layout = QtWidgets.QHBoxLayout()
+        item_layout.setContentsMargins(0, 0, 0, 0)
+        item_layout.addWidget(button)
+        item_layout.addWidget(label)
+        item_widget = QtWidgets.QWidget()
+        item_widget.setLayout(item_layout)
+        item = QtWidgets.QListWidgetItem(self)
+        item.setSizeHint(item_widget.sizeHint())
+        self.setItemWidget(item, item_widget)
+        self.setCurrentRow(self.count()-1)
+        button.clicked.connect(partial(self.remove_item, item))
+
+
+    def item_hover(self, item):
+        print("lol")
+
+    def remove_item(self, item):
+        row = self.row(item)
+        self.takeItem(row)
+        chart = self.graph.graphs.pop(row)
+        self.graph.removeItem(chart["plt"])
+
+        # Если не осталось элементов
+        if not self.count():
+            # Скрываем список графиков
+            self.hide()
+            # Очищаем график
+            self.graph.Clean()
+        else:
+            self.graph.reDraw()
+
+
 class Menu3DLayout(QtWidgets.QVBoxLayout):
     def __init__(self, graph: Graph3DWidjet, *args, **kargs):
         super().__init__(*args, **kargs)
@@ -1116,9 +1186,8 @@ class Menu3DLayout(QtWidgets.QVBoxLayout):
         testButton.clicked.connect(self.onTestButton)
         self.addWidget(testButton)
 
-        self.comboListCharts = QtWidgets.QComboBox()
-        # self.comboListCharts = QtWidgets.QListWidget()
-        self.addWidget(self.comboListCharts)
+        self.listCharts = ChartListWidget(self.graph)
+        self.addWidget(self.listCharts)
 
         spacer = QtWidgets.QSpacerItem(
             0, 0, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)  # type: ignore
