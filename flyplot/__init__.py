@@ -200,10 +200,13 @@ class Graph3DWidjet(gl.GLViewWidget):
         self.ct_menu.actions["copy"].triggered.connect(self.keyCtrlCAction)
         self.ct_menu.actions["save"].triggered.connect(self.saveAction)
 
+        # self.__testDebug()
+
     def contextMenuEvent(self, ev: QtGui.QContextMenuEvent):
         self.ct_menu.exec(self.mapToGlobal(ev.pos()))
 
-        # self.__testDebug()
+    def setMenu(self, menu):
+        self.menu = menu
 
     def __testDebug(self):
         for ax in "xyz":
@@ -222,6 +225,10 @@ class Graph3DWidjet(gl.GLViewWidget):
         self.__initGrid()
         # Ставим вид по умолчанию
         self.goDefView()
+
+        if hasattr(self, "menu"):
+            self.menu.comboListCharts.clear()
+            self.menu.comboListCharts.hide()
 
         # self.__testDebug()
 
@@ -302,6 +309,8 @@ class Graph3DWidjet(gl.GLViewWidget):
             axi = self.axis[ax]
             axi["space"] = (axi["max"] - axi["min"])/10
             axi["space"] = np.ceil(axi["space"]/100)*100
+        min_space_ax = min("xyz", key=lambda el: self.axis[el]["space"])
+        min_space = self.axis[min_space_ax]["space"]
 
         # Округляем эти значения с точность шага сетки
         for ax in "xyz":
@@ -331,12 +340,12 @@ class Graph3DWidjet(gl.GLViewWidget):
 
             # Параметры текста
             # Делений оси
-            axi["value"]["size"] = axi["space"]*0.6
-            axi["value"]["offset"] = axi["space"]*0.4
+            axi["value"]["size"] = min_space*0.6
+            axi["value"]["offset"] = min_space*0.4
             # Подписей осей
-            axi["label"]["size"] = axi["space"]
-            axi["label"]["offset"] = 2*axi["space"]
-            axi["label"]["step"] = axi["space"]
+            axi["label"]["size"] = min_space
+            axi["label"]["offset"] = 2*min_space
+            axi["label"]["step"] = min_space
 
     def paintGridByDirection(self):
         """
@@ -693,7 +702,7 @@ class Graph3DWidjet(gl.GLViewWidget):
         # Поворот каждой подписи
         rX = label["angle"]*z["direction"]
         for l in label["mas"]:
-            ddY += l.height / 2 + label["step"]
+            ddY += l.height / 2
             # Перемещение завист от положения оси Z
             l.myTranslate(0, -z["direction"]*ddY, 0)
             # Кажду метку для красоты поворачиваем на маленький угол
@@ -748,7 +757,7 @@ class Graph3DWidjet(gl.GLViewWidget):
         # Поворот каждой подписи
         rX = label["angle"]*z["direction"]
         for l in label["mas"]:
-            ddY += l.height / 2 + label["step"]
+            ddY += l.height / 2
             # Перемещение завист от положения оси Z
             l.myTranslate(0, -z["direction"]*ddY, 0)
             # Кажду метку для красоты поворачиваем на маленький угол
@@ -817,6 +826,7 @@ class Graph3DWidjet(gl.GLViewWidget):
 
     def __parseData(self, data_file: str):
         chart = {}
+        chart["file"] = os.path.abspath(data_file)
         with open(data_file, "r", encoding="utf-8") as f:
             chart["name"] = f.readline().split("name: ")[-1].strip()
 
@@ -883,6 +893,17 @@ class Graph3DWidjet(gl.GLViewWidget):
             chart["axis"]["x"]["max"] = p2[0]
             chart["axis"]["y"]["max"] = p2[1]
             chart["axis"]["z"]["max"] = p2[2]
+
+        if hasattr(self, "menu"):
+            # получение имени файла
+            filename = os.path.basename(chart["file"])
+            # получение имени папки
+            dirname = os.path.basename(os.path.dirname(chart["file"]))
+            # объединение имени папки и имени файла
+            short_path = os.path.join(dirname, filename)
+            self.menu.comboListCharts.addItem(short_path)
+            if self.isVisible():
+                self.menu.comboListCharts.show()
 
         return chart
 
@@ -1095,6 +1116,10 @@ class Menu3DLayout(QtWidgets.QVBoxLayout):
         testButton.clicked.connect(self.onTestButton)
         self.addWidget(testButton)
 
+        self.comboListCharts = QtWidgets.QComboBox()
+        # self.comboListCharts = QtWidgets.QListWidget()
+        self.addWidget(self.comboListCharts)
+
         spacer = QtWidgets.QSpacerItem(
             0, 0, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)  # type: ignore
         self.addSpacerItem(spacer)
@@ -1128,18 +1153,24 @@ class Graph3DWindow(QtWidgets.QWidget):
         # названия файла с данными для графика
         self.data_file = data_file
         # Получаем окно 3d графика
-        self.graph = Graph3DWidjet(data_file)
+        self.graph = Graph3DWidjet()
 
         # Задаём лаяут по умолчанию
         self.__layout = QtWidgets.QHBoxLayout(self)
         # Добавим туда сам график
         self.__layout.addWidget(self.graph, 1)
         self.menu = Menu3DLayout(self.graph)
+        self.graph.setMenu(self.menu)
+
+        if self.data_file:
+            self.graph.addChart(self.data_file)
+
         # Добавим туда меню для графика
         self.__layout.addLayout(self.menu)
         # Приклеиваем компоненты к верху виджета
         self.__layout.setAlignment(QtCore.Qt.AlignTop)  # type: ignore
 
+        # Разрешить перетаскивание
         self.setAcceptDrops(True)
 
     def dragEnterEvent(self, event):
@@ -1150,5 +1181,5 @@ class Graph3DWindow(QtWidgets.QWidget):
 
     def dropEvent(self, event):
         for url in event.mimeData().urls():
-            file = url.toLocalFile()
-            self.graph.addChart(file)
+            data_file = url.toLocalFile()
+            self.graph.addChart(data_file)
