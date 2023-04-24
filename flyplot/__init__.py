@@ -234,22 +234,16 @@ class Graph3DWidjet(gl.GLViewWidget):
         x = diff.x()
         y = diff.y()
 
-        dd = max(x, y, key=lambda num: abs(num))
-
-        if dd:
-            x /= abs(dd)
-            y /= abs(dd)
-
-        panScale = 8
-        rotScale = 4
-
         self.mousePos = lpos
         if ev.buttons() == QtCore.Qt.MouseButton.LeftButton:
-            self.orbit(-x*rotScale, y*rotScale)
+            self.orbit(-x, y)
         elif ev.buttons() == QtCore.Qt.MouseButton.MiddleButton:
-            self.pan(x*panScale, y*panScale, 0, relative='view')
+            self.pan(x, y, 0, relative='view')
 
         self.paintGridByDirection()
+
+    def mousePressEvent(self, ev):
+        self.mousePos = ev.position() if hasattr(ev, 'position') else ev.localPos()
 
     def __initAxis(self):
         for ax in "xyz":
