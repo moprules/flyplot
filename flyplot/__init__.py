@@ -162,6 +162,28 @@ class GraphContextMenu(QtWidgets.QMenu):
         self.addAction(self.actions["save"])
 
 
+class Area(gl.GLMeshItem):
+    def __init__(self,
+                 pos=[0, 0, 0],
+                 radius=1.0,
+                 length=0.1,
+                 color=pg.mkColor(0, 255, 0)):
+        self.my_pos = pos
+        self.my_radius = radius
+        self.my_length = length
+        self.my_color = color
+        cylinder = gl.MeshData.cylinder(rows=50,
+                                        cols=50,
+                                        radius=[0, self.my_radius],
+                                        length=self.my_length)
+        super().__init__(meshdata=cylinder,
+                         smooth=True,
+                         shader='balloon',
+                         color=self.my_color,
+                         glOptions='opaque')
+        self.translate(*self.my_pos)
+
+
 class Graph3DWidjet(gl.GLViewWidget):
     def __init__(self, data_file="", *args, **kargs):
         super().__init__(*args, **kargs)
@@ -172,6 +194,7 @@ class Graph3DWidjet(gl.GLViewWidget):
         self.graphs = []
         self.axis = {}
         self.grid = {}
+        self.areas = []
         self.__initAxis()
         self.__initGrid()
 
@@ -201,6 +224,10 @@ class Graph3DWidjet(gl.GLViewWidget):
         self.ct_menu.actions["copy"].triggered.connect(self.keyCtrlCAction)
         self.ct_menu.actions["save"].triggered.connect(self.saveAction)
 
+        area = Area(pos=[1100, -1900, 0], radius=50)
+        self.addItem(area)
+        self.areas.append(area)
+
         # self.__testDebug()
 
     def contextMenuEvent(self, ev: QtGui.QContextMenuEvent):
@@ -222,6 +249,7 @@ class Graph3DWidjet(gl.GLViewWidget):
         self.graphs = []
         self.axis = {}
         self.grid = {}
+        self.areas = []
         self.__initAxis()
         self.__initGrid()
         # Ставим вид по умолчанию
@@ -230,7 +258,6 @@ class Graph3DWidjet(gl.GLViewWidget):
         if hasattr(self, "menu"):
             self.menu.listCharts.clear()
             self.menu.listCharts.hide()
-            self.menu.colorButton.hide()
 
         # self.__testDebug()
 
@@ -826,6 +853,11 @@ class Graph3DWidjet(gl.GLViewWidget):
             # Все графики в пространстве
             self.goDefView()
 
+            if hasattr(self, "menu"):
+                self.menu.listCharts.add_chart(chart)
+                if self.isVisible():
+                    self.menu.listCharts.show()
+
     def reDraw(self):
         # Перестраиваем сетку под новый график
         self.recalcAxis()
@@ -918,13 +950,6 @@ class Graph3DWidjet(gl.GLViewWidget):
             chart["axis"]["x"]["max"] = p2[0]
             chart["axis"]["y"]["max"] = p2[1]
             chart["axis"]["z"]["max"] = p2[2]
-
-        if hasattr(self, "menu"):
-            self.menu.listCharts.add_chart(chart)
-            if self.isVisible():
-                self.menu.listCharts.show()
-                self.menu.colorButton.show()
-
         return chart
 
     def addLabel(self, ax, text, isForce=False):
@@ -1120,44 +1145,105 @@ class Graph3DWidjet(gl.GLViewWidget):
         self.paintGridByDirection()
 
 
+class ColorButton(QtWidgets.QPushButton):
+    def __init__(self, color=pg.mkColor("r"), size=24, width=2, parent=None):
+        super().__init__(parent)
+        self.color = color
+        self.size = size
+        self.width = width
+        self.setFixedSize(size, size)
+        self.setIcon(self.createIcon())
+
+    def createIcon(self):
+        pixmap = QtGui.QPixmap(self.size, self.size)
+        pixmap.fill(QtCore.Qt.transparent)
+
+        painter = QtGui.QPainter(pixmap)
+        painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
+
+        color = QtGui.QColor(self.color)
+        pen = painter.pen()
+        pen.setColor(color)
+        pen.setWidth(self.width)
+
+        brush = painter.brush()
+        brush.setColor(color)
+        brush.setStyle(QtCore.Qt.SolidPattern)
+        painter.setBrush(brush)
+        painter.setPen(pen)
+
+        r = self.size - self.width*2
+        painter.drawEllipse(self.width, self.width, r, r)
+
+        painter.end()
+
+        icon = QtGui.QIcon(pixmap)
+        return icon
+
+    def setColor(self, color):
+        self.color = pg.mkColor(color)
+        self.setIcon(self.createIcon())
+
+
 class ChartListWidget(QtWidgets.QListWidget):
 
     def __init__(self, graph: Graph3DWidjet, *args, **kargs):
         super().__init__(*args, **kargs)
         self.graph = graph
-        self.itemEntered.connect(self.item_hover)
+
         self.setSizePolicy(QtWidgets.QSizePolicy.Minimum,
                            QtWidgets.QSizePolicy.Minimum)
 
     def add_chart(self, chart: dict):
-        # Кнопка убрать график
-        button = QtWidgets.QPushButton()
-        icon = QtGui.QPixmap(os.path.join(PKG_DIR, "icons/del.svg"))
-        button.setIcon(icon)
-        button.setFlat(True)
-        button.setSizePolicy(QtWidgets.QSizePolicy.Fixed,
-                             QtWidgets.QSizePolicy.Fixed)
+        # Кнопка поменять цвет графика
+        color_button = ColorButton(color=pg.mkColor(chart["color"]))
+        color_button.setFlat(True)
+        color_button.setSizePolicy(QtWidgets.QSizePolicy.Fixed,
+                                   QtWidgets.QSizePolicy.Fixed)
 
         label = QtWidgets.QLabel(chart["short_path"])
         label.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding,
                             QtWidgets.QSizePolicy.MinimumExpanding)
+        # Кнопка убрать график
+        del_button = QtWidgets.QPushButton()
+        icon = QtGui.QPixmap(os.path.join(PKG_DIR, "icons/del.svg"))
+        del_button.setIcon(icon)
+        del_button.setFlat(True)
+        del_button.setSizePolicy(QtWidgets.QSizePolicy.Fixed,
+                                 QtWidgets.QSizePolicy.Fixed)
 
         item_layout = QtWidgets.QHBoxLayout()
         item_layout.setContentsMargins(0, 0, 0, 0)
-        item_layout.addWidget(button)
+        item_layout.addWidget(color_button)
         item_layout.addWidget(label)
+        item_layout.addWidget(del_button)
         item_widget = QtWidgets.QWidget()
         item_widget.setLayout(item_layout)
         item = QtWidgets.QListWidgetItem(self)
         item.setSizeHint(item_widget.sizeHint())
         self.setItemWidget(item, item_widget)
         self.setCurrentRow(self.count()-1)
-        button.clicked.connect(partial(self.remove_item, item))
 
-    def item_hover(self, item):
-        pass
+        color_button.clicked.connect(
+            partial(self.change_color, color_button, item))
+        del_button.clicked.connect(partial(self.remove_item, item))
 
-    def remove_item(self, item):
+    @Slot()
+    def change_color(self, color_button: ColorButton, item: QtWidgets.QListWidgetItem):
+        colorDlg = QtWidgets.QColorDialog()
+        i = self.row(item)
+        chart = self.graph.graphs[i]
+        last_color = pg.mkColor(chart["color"])
+        colorDlg.setCurrentColor(last_color)
+        if colorDlg.exec() == QtWidgets.QColorDialog.Accepted:
+            cur_color = colorDlg.selectedColor()
+            chart["color"] = cur_color
+            plt: gl.GLLinePlotItem = chart["plt"]
+            plt.setData(color=cur_color, width=1, antialias=True)
+            color_button.setColor(cur_color)
+
+    @Slot()
+    def remove_item(self, item: QtWidgets.QListWidgetItem):
         row = self.row(item)
         self.takeItem(row)
         chart = self.graph.graphs.pop(row)
@@ -1167,7 +1253,6 @@ class ChartListWidget(QtWidgets.QListWidget):
         if not self.count():
             # Скрываем список графиков
             self.hide()
-            self.graph.menu.colorButton.hide()
             # Очищаем график
             self.graph.Clean()
         else:
@@ -1194,12 +1279,6 @@ class Menu3DLayout(QtWidgets.QVBoxLayout):
 
         self.listCharts = ChartListWidget(self.graph)
         self.addWidget(self.listCharts)
-        self.colorButton = QtWidgets.QPushButton("Цвет графика")
-        icon = QtGui.QPixmap(os.path.join(PKG_DIR, "icons/color.svg"))
-        self.colorButton.setIcon(icon)
-        self.colorButton.setFlat(True)
-        self.colorButton.clicked.connect(self.onColorButton)
-        self.addWidget(self.colorButton)
 
         spacer = QtWidgets.QSpacerItem(
             0, 0, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)  # type: ignore
@@ -1226,19 +1305,6 @@ class Menu3DLayout(QtWidgets.QVBoxLayout):
             return
         self.graph.removeItem(chart["plt"])
 
-    @Slot()
-    def onColorButton(self):
-        colorDlg = QtWidgets.QColorDialog()
-        i = self.listCharts.currentRow()
-        chart = self.graph.graphs[i]
-        last_color = pg.mkColor(chart["color"])
-        colorDlg.setCurrentColor(last_color)
-        if colorDlg.exec() == QtWidgets.QColorDialog.Accepted:
-            cur_color = colorDlg.selectedColor()
-            chart["color"] = cur_color
-            plt: gl.GLLinePlotItem = chart["plt"]
-            plt.setData(color=cur_color, width=1, antialias=True)
-
 
 class Graph3DWindow(QtWidgets.QWidget):
     def __init__(self, data_file: str = "", *args, **kargs):
@@ -1255,7 +1321,7 @@ class Graph3DWindow(QtWidgets.QWidget):
 
         # Задаём лаяут по умолчанию
         self.__layout = QtWidgets.QHBoxLayout(self)
-        
+
         self.menu = Menu3DLayout(self.graph)
         self.graph.setMenu(self.menu)
         # Добавим туда меню для графика
