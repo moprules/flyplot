@@ -167,21 +167,26 @@ class Area(gl.GLMeshItem):
                  pos=[0, 0, 0],
                  radius=1.0,
                  length=0.1,
-                 color=pg.mkColor(0, 255, 0)):
-        self.my_pos = pos
-        self.my_radius = radius
-        self.my_length = length
-        self.my_color = color
+                 color=pg.mkColor("g")):
+        self.pos = pos
+        self.radius = radius
+        self.length = length
+        self.color = color
         cylinder = gl.MeshData.cylinder(rows=50,
                                         cols=50,
-                                        radius=[0, self.my_radius],
-                                        length=self.my_length)
+                                        radius=[0, self.radius],
+                                        length=self.length)
         super().__init__(meshdata=cylinder,
                          smooth=True,
                          shader='balloon',
-                         color=self.my_color,
+                         color=self.color,
                          glOptions='opaque')
-        self.translate(*self.my_pos)
+        self.translate(*self.pos)
+        self.translate(0, 0, -self.length)
+
+    def setColor(self, c):
+        self.color = pg.mkColor(c)
+        super().setColor(c)
 
 
 class Graph3DWidjet(gl.GLViewWidget):
@@ -224,11 +229,26 @@ class Graph3DWidjet(gl.GLViewWidget):
         self.ct_menu.actions["copy"].triggered.connect(self.keyCtrlCAction)
         self.ct_menu.actions["save"].triggered.connect(self.saveAction)
 
-        area = Area(pos=[1100, -1900, 0], radius=50)
-        self.addItem(area)
-        self.areas.append(area)
-
         # self.__testDebug()
+
+        # area = Area(pos=[1100, -1900, 0], radius=500)
+        # self.addItem(area)
+        # self.areas.append(area)
+        # self.addArea(pos=[1100, -1900, 0], radius=500, color=pg.mkColor("g"),i=0)
+
+    def addArea(self,
+                pos=[0, 0, 0],
+                radius=1.0,
+                color=pg.mkColor("g"),
+                i=None):
+
+        if not i:
+            i = len(self.areas)
+        area = Area(pos=pos, radius=radius, color=color)
+        self.addItem(area)
+        # ЧТобы рисовалось раньше графика
+        area.setDepthValue(-100)
+        self.areas.insert(i, area)
 
     def contextMenuEvent(self, ev: QtGui.QContextMenuEvent):
         self.ct_menu.exec(self.mapToGlobal(ev.pos()))
@@ -258,6 +278,7 @@ class Graph3DWidjet(gl.GLViewWidget):
         if hasattr(self, "menu"):
             self.menu.listCharts.clear()
             self.menu.listCharts.hide()
+            self.menu.areasTable.Clean()
 
         # self.__testDebug()
 
@@ -1151,7 +1172,7 @@ class ColorButton(QtWidgets.QPushButton):
         self.color = color
         self.size = size
         self.width = width
-        self.setFixedSize(size, size)
+        self.setFixedHeight(size)
         self.setIcon(self.createIcon())
 
     def createIcon(self):
@@ -1198,8 +1219,8 @@ class ChartListWidget(QtWidgets.QListWidget):
         # Кнопка поменять цвет графика
         color_button = ColorButton(color=pg.mkColor(chart["color"]))
         color_button.setFlat(True)
-        color_button.setSizePolicy(QtWidgets.QSizePolicy.Fixed,
-                                   QtWidgets.QSizePolicy.Fixed)
+        color_button.setSizePolicy(QtWidgets.QSizePolicy.Minimum,
+                                   QtWidgets.QSizePolicy.Minimum)
 
         label = QtWidgets.QLabel(chart["short_path"])
         label.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding,
@@ -1259,6 +1280,146 @@ class ChartListWidget(QtWidgets.QListWidget):
             self.graph.reDraw()
 
 
+class AreasTable(QtWidgets.QTableWidget):
+    def __init__(self, graph: Graph3DWidjet):
+        super().__init__()
+
+        self.graph = graph
+        self.del_btns = []
+        self.color_btns = []
+
+        # Установка количества строк и столбцов в таблице
+        self.setRowCount(0)
+        self.setColumnCount(6)
+
+        self.setSizePolicy(QtWidgets.QSizePolicy.Minimum,
+                           QtWidgets.QSizePolicy.Minimum)
+
+        self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+
+        self.cellChanged.connect(self.handleCellChanged)
+
+        # Заголовки столбцов
+        self.headers = ["Цвет", "Радиус", "X", "Y", "Z", ""]
+        self.setHorizontalHeaderLabels(["Цвет", "Радиус", "X", "Y", "Z", ""])
+
+        self.addAreaRow()
+
+    def addAreaRow(self, color=pg.mkColor("g"), radisus="", x="", y="", z="", chart: dict = {}):
+        row = self.rowCount()
+        # Увеличиваем количество строк
+        self.setRowCount(row + 1)
+        # Выставляем размер строки
+        self.setRowHeight(row, 20)
+
+        # Кнопка изменения цвета строки
+        color_button = ColorButton(color=pg.mkColor(color))
+        color_button.setFlat(True)
+        color_button.setFocusPolicy(QtCore.Qt.NoFocus)
+        color_button.setSizePolicy(QtWidgets.QSizePolicy.Minimum,
+                                   QtWidgets.QSizePolicy.Minimum)
+        color_button.clicked.connect(partial(self.change_color, color_button))
+        self.setCellWidget(row, 0, color_button)
+        self.color_btns.append(color_button)
+
+        # Кнопка удаления строки
+        del_button = QtWidgets.QPushButton()
+        del_button.setFocusPolicy(QtCore.Qt.NoFocus)
+        icon = QtGui.QPixmap(os.path.join(PKG_DIR, "icons/del.svg"))
+        del_button.setIcon(icon)
+        del_button.setFlat(True)
+        del_button.setSizePolicy(QtWidgets.QSizePolicy.Minimum,
+                                 QtWidgets.QSizePolicy.Minimum)
+        del_button.clicked.connect(partial(self.delAreaRow, del_button))
+        self.setCellWidget(row, 5, del_button)
+        self.del_btns.append(del_button)
+
+        self.resizeColumnsToContents()
+
+    @Slot()
+    def change_color(self, color_button: ColorButton):
+        try:
+            colorDlg = QtWidgets.QColorDialog()
+            last_color = pg.mkColor(color_button.color)
+            colorDlg.setCurrentColor(last_color)
+            if colorDlg.exec() == QtWidgets.QColorDialog.Accepted:
+                cur_color = colorDlg.selectedColor()
+                color_button.setColor(cur_color)
+                i = self.color_btns.index(color_button)
+                area = self.graph.areas[i]
+                area.setColor(cur_color)
+        except:
+            return
+
+    def delAreaRow(self, del_button):
+        try:
+            i = self.del_btns.index(del_button)
+            self.del_btns.pop(i)
+            self.color_btns.pop(i)
+            self.removeRow(i)
+            area = self.graph.areas.pop(i)
+            self.graph.removeItem(area)
+        except:
+            pass
+        if not self.rowCount():
+            self.addAreaRow()
+
+    def Clean(self):
+        for row in range(self.rowCount(), -1, -1):
+            try:
+                del_button = self.del_btns[row]
+                self.delAreaRow(del_button)
+            except:
+                pass
+
+    @Slot()
+    def handleCellChanged(self, row, col):
+        if self.signalsBlocked():
+            return
+        item = self.item(row, col)
+        if item:
+            isFlaot = True
+            try:
+                f = float(item.text())
+            except:
+                isFlaot = False
+            if isFlaot:
+                # Если изменили валидным вещественным числом
+                # столбец Радиус
+                if col == 1:
+                    # Задаём координаты
+                    self.blockSignals(True)
+                    for j in (2, 3, 4):
+                        item = self.item(row, j)
+                        if not item or (item and not item.text()):
+                            self.setItem(
+                                row, j, QtWidgets.QTableWidgetItem("0"))
+
+                    self.blockSignals(False)
+
+                # Если все параметры поля верны
+                if all(self.item(row, j) for j in (1, 2, 3, 4)):
+                    # Получаем параметры поля
+                    radius, *pos = map(float, (self.item(row, j).text()
+                                               for j in (1, 2, 3, 4)))
+                    try:
+                        color = self.color_btns[row].color
+                    except:
+                        return
+                    try:
+                        area = self.graph.areas.pop(row)
+                        self.graph.removeItem(area)
+                    except:
+                        pass
+                    self.graph.addArea(pos=pos, radius=radius,
+                                       color=pg.mkColor(color), i=row)
+            else:
+                f = 0
+                self.blockSignals(True)
+                item.setText("")
+                self.blockSignals(False)
+
+
 class Menu3DLayout(QtWidgets.QVBoxLayout):
     def __init__(self, graph: Graph3DWidjet, *args, **kargs):
         super().__init__(*args, **kargs)
@@ -1279,6 +1440,9 @@ class Menu3DLayout(QtWidgets.QVBoxLayout):
 
         self.listCharts = ChartListWidget(self.graph)
         self.addWidget(self.listCharts)
+
+        self.areasTable = AreasTable(self.graph)
+        self.addWidget(self.areasTable)
 
         spacer = QtWidgets.QSpacerItem(
             0, 0, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)  # type: ignore
