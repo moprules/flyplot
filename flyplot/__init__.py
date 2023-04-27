@@ -1,11 +1,11 @@
 import os
-import math
 import numpy as np
 import pyqtgraph as pg
 import pyqtgraph.opengl as gl
 from PySide6.QtCore import Slot
 from PySide6 import QtWidgets, QtGui, QtCore
 from functools import partial
+from . parser import Parser3DGraphFile
 
 PKG_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -897,80 +897,14 @@ class Graph3DWidjet(gl.GLViewWidget):
         self.goDefView()
 
     def __parseData(self, data_file: str):
-        chart = {}
-        chart["path"] = os.path.abspath(data_file)
-        # получение имени файла
-        filename = os.path.basename(chart["path"])
-        # получение имени папки
-        dirname = os.path.basename(os.path.dirname(chart["path"]))
-        # объединение имени папки и имени файла
-        chart["short_path"] = os.path.join(dirname, filename)
-        with open(data_file, "r", encoding="utf-8") as f:
-            chart["name"] = f.readline().split("name: ")[-1].strip()
-
-            chart["type"] = f.readline().split("type: ")[-1].strip()
-
-            if chart["type"] != "3D":
-                msg_box = QtWidgets.QMessageBox()
-                msg_box.setWindowTitle("Ошибка")
-                msg_box.setText(f'График типа "{chart["type"]}" а не 3D')
-                msg_box.exec()
-                return None
-
-            chart["axis"] = {}
-            for _ in range(3):
-                # Получаем ось - x, y, z
-                ax, data = f.readline().split(":")
-                # Поолучаем её название и размерность
-                name, dim = map(lambda s: s.strip(), data.split("|"))
-                chart["axis"][ax] = {"name": name, "dim": dim}
-
-            # Считываем пустую строку, там идентификатор начала точек графика
-            f.readline()
-            # Массивы точек
-            chart["coords"] = []
-            # Массив точек времени
-            chart["times"] = []
-
-            # Крафйние точки куба, вмещающего график
-            p1 = np.zeros(3)
-            p2 = np.zeros(3)
-
-            isFirst = True
-            for line in f:
-                # Очищаем строку
-                line = line.strip()
-                # Пропускаем пустые строки и комментарии
-                if not line or line[0].isalpha():
-                    continue
-                # Флаг, что началься новый блок
-                if line.startswith("points"):
-                    break
-                # Обрабатываем координаты точек
-                time, data = line.split("->")
-                chart["times"].append(float(time))
-                curX, curY, curZ = map(float, data.split())
-                chart["coords"].append((curX, curY, curZ))
-                if isFirst:
-                    p1[:] = curX, curY, curZ  # type: ignore
-                    p2[:] = curX, curY, curZ  # type: ignore
-                    isFirst = False
-                else:
-                    p1[0] = min(p1[0], curX)  # type: ignore
-                    p1[1] = min(p1[1], curY)  # type: ignore
-                    p1[2] = min(p1[2], curZ)  # type: ignore
-
-                    p2[0] = max(p2[0], curX)  # type: ignore
-                    p2[1] = max(p2[1], curY)  # type: ignore
-                    p2[2] = max(p2[2], curZ)  # type: ignore
-
-            chart["axis"]["x"]["min"] = p1[0]
-            chart["axis"]["y"]["min"] = p1[1]
-            chart["axis"]["z"]["min"] = p1[2]
-
-            chart["axis"]["x"]["max"] = p2[0]
-            chart["axis"]["y"]["max"] = p2[1]
-            chart["axis"]["z"]["max"] = p2[2]
+        p = Parser3DGraphFile()
+        chart = p.load(data_file)
+        if chart["err"]:
+            msg_box = QtWidgets.QMessageBox()
+            msg_box.setWindowTitle("Ошибка")
+            msg_box.setText(f'График типа "{chart["type"]}" а не 3D')
+            msg_box.exec()
+            return None
         return chart
 
     def addLabel(self, ax, text, isForce=False):
@@ -1384,9 +1318,10 @@ class AreasTable(QtWidgets.QTableWidget):
             except:
                 isFlaot = False
             if isFlaot:
-                # Если изменили валидным вещественным числом
+                # Если есть столбец радиус
                 # столбец Радиус
-                if col == 1:
+                radiusCol = self.item(row, 1)
+                if radiusCol and radiusCol.text():
                     # Задаём координаты
                     self.blockSignals(True)
                     for j in (2, 3, 4):
@@ -1414,7 +1349,6 @@ class AreasTable(QtWidgets.QTableWidget):
                     self.graph.addArea(pos=pos, radius=radius,
                                        color=pg.mkColor(color), i=row)
             else:
-                f = 0
                 self.blockSignals(True)
                 item.setText("")
                 self.blockSignals(False)
