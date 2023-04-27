@@ -1246,6 +1246,7 @@ class AreasTable(QtWidgets.QTableWidget):
     def addAreaRow(self, radius="", x="", y="", z="", color=pg.mkColor("g")):
         row = self.rowCount()
         # Если у нас последняя строка пустая, то заполняем её
+        isOld = False
         if row >= 1:
             isEmpty = True
             for c in (1, 2, 3, 4):
@@ -1254,6 +1255,7 @@ class AreasTable(QtWidgets.QTableWidget):
                     isEmpty = False
                     break
             if isEmpty:
+                isOld = True
                 row -= 1
 
         # Увеличиваем количество строк
@@ -1262,14 +1264,16 @@ class AreasTable(QtWidgets.QTableWidget):
         self.setRowHeight(row, 20)
 
         # Кнопка изменения цвета строки
-        color_button = ColorButton(color=pg.mkColor(color))
-        color_button.setFlat(True)
-        color_button.setFocusPolicy(QtCore.Qt.NoFocus)
-        color_button.setSizePolicy(QtWidgets.QSizePolicy.Minimum,
-                                   QtWidgets.QSizePolicy.Minimum)
-        color_button.clicked.connect(partial(self.change_color, color_button))
-        self.setCellWidget(row, 0, color_button)
-        self.color_btns.append(color_button)
+        if not isOld:
+            color_button = ColorButton(color=pg.mkColor(color))
+            color_button.setFlat(True)
+            color_button.setFocusPolicy(QtCore.Qt.NoFocus)
+            color_button.setSizePolicy(QtWidgets.QSizePolicy.Minimum,
+                                       QtWidgets.QSizePolicy.Minimum)
+            color_button.clicked.connect(
+                partial(self.change_color, color_button))
+            self.setCellWidget(row, 0, color_button)
+            self.color_btns.append(color_button)
 
         # Радиус области
         self.setItem(row, 1, QtWidgets.QTableWidgetItem(str(radius)))
@@ -1278,16 +1282,17 @@ class AreasTable(QtWidgets.QTableWidget):
         self.setItem(row, 4, QtWidgets.QTableWidgetItem(str(z)))
 
         # Кнопка удаления строки
-        del_button = QtWidgets.QPushButton()
-        del_button.setFocusPolicy(QtCore.Qt.NoFocus)
-        icon = QtGui.QPixmap(os.path.join(PKG_DIR, "icons/del.svg"))
-        del_button.setIcon(icon)
-        del_button.setFlat(True)
-        del_button.setSizePolicy(QtWidgets.QSizePolicy.Minimum,
-                                 QtWidgets.QSizePolicy.Minimum)
-        del_button.clicked.connect(partial(self.delAreaRow, del_button))
-        self.setCellWidget(row, 5, del_button)
-        self.del_btns.append(del_button)
+        if not isOld:
+            del_button = QtWidgets.QPushButton()
+            del_button.setFocusPolicy(QtCore.Qt.NoFocus)
+            icon = QtGui.QPixmap(os.path.join(PKG_DIR, "icons/del.svg"))
+            del_button.setIcon(icon)
+            del_button.setFlat(True)
+            del_button.setSizePolicy(QtWidgets.QSizePolicy.Minimum,
+                                     QtWidgets.QSizePolicy.Minimum)
+            del_button.clicked.connect(partial(self.delAreaRow, del_button))
+            self.setCellWidget(row, 5, del_button)
+            self.del_btns.append(del_button)
 
         self.resizeColumnsToContents()
 
