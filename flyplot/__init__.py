@@ -1271,13 +1271,11 @@ class AreasTable(QtWidgets.QTableWidget):
         self.setCellWidget(row, 0, color_button)
         self.color_btns.append(color_button)
 
-        # self.blockSignals(True)
         # Радиус области
         self.setItem(row, 1, QtWidgets.QTableWidgetItem(str(radius)))
         self.setItem(row, 2, QtWidgets.QTableWidgetItem(str(x)))
         self.setItem(row, 3, QtWidgets.QTableWidgetItem(str(y)))
         self.setItem(row, 4, QtWidgets.QTableWidgetItem(str(z)))
-        # self.blockSignals(False)
 
         # Кнопка удаления строки
         del_button = QtWidgets.QPushButton()
