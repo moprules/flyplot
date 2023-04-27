@@ -842,6 +842,10 @@ class Graph3DWidjet(gl.GLViewWidget):
     def addChart(self, data_file: str):
         chart = self.__parseData(data_file)
         if chart:
+            # Сначала добавим области
+            if chart["areas"]:
+                for area in chart["areas"]:
+                    self.menu.areasTable.addAreaRow(*area)
             stdcolors = "brkgy"
             cindex = len(self.graphs) % len(stdcolors)
             chart["color"] = stdcolors[cindex]
@@ -1239,8 +1243,19 @@ class AreasTable(QtWidgets.QTableWidget):
 
         self.addAreaRow()
 
-    def addAreaRow(self, color=pg.mkColor("g"), radisus="", x="", y="", z="", chart: dict = {}):
+    def addAreaRow(self, radius="", x="", y="", z="", color=pg.mkColor("g")):
         row = self.rowCount()
+        # Если у нас последняя строка пустая, то заполняем её
+        if row >= 1:
+            isEmpty = True
+            for c in (1, 2, 3, 4):
+                item = self.item(row-1, c)
+                if item and item.text():
+                    isEmpty = False
+                    break
+            if isEmpty:
+                row -= 1
+
         # Увеличиваем количество строк
         self.setRowCount(row + 1)
         # Выставляем размер строки
@@ -1255,6 +1270,14 @@ class AreasTable(QtWidgets.QTableWidget):
         color_button.clicked.connect(partial(self.change_color, color_button))
         self.setCellWidget(row, 0, color_button)
         self.color_btns.append(color_button)
+
+        # self.blockSignals(True)
+        # Радиус области
+        self.setItem(row, 1, QtWidgets.QTableWidgetItem(str(radius)))
+        self.setItem(row, 2, QtWidgets.QTableWidgetItem(str(x)))
+        self.setItem(row, 3, QtWidgets.QTableWidgetItem(str(y)))
+        self.setItem(row, 4, QtWidgets.QTableWidgetItem(str(z)))
+        # self.blockSignals(False)
 
         # Кнопка удаления строки
         del_button = QtWidgets.QPushButton()
