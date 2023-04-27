@@ -129,39 +129,6 @@ class Text3DItem(gl.GLImageItem):
         return data
 
 
-class GraphContextMenu(QtWidgets.QMenu):
-    def __init__(self, *args, **kargs):
-        super().__init__(*args, **kargs)
-
-        self.actions = {}
-
-        # Пункт Вид по умолчанию
-        self.actions["home"] = QtGui.QAction("Вид по умолчанию", self)
-        # Тригеры настраиваются в композирующем классе
-        # self.actions["defView"].triggered.connect(self.action1)
-        icon = QtGui.QPixmap(os.path.join(PKG_DIR, "icons/home.svg"))
-        self.actions["home"].setIcon(icon)
-        self.addAction(self.actions["home"])
-
-        # Пункт Очистить
-        self.actions["clean"] = QtGui.QAction("Очистить", self)
-        icon = QtGui.QPixmap(os.path.join(PKG_DIR, "icons/clean.svg"))
-        self.actions["clean"].setIcon(icon)
-        self.addAction(self.actions["clean"])
-
-        # Пункт Скопировать
-        self.actions["copy"] = QtGui.QAction("Копировать", self)
-        icon = QtGui.QPixmap(os.path.join(PKG_DIR, "icons/copy.svg"))
-        self.actions["copy"].setIcon(icon)
-        self.addAction(self.actions["copy"])
-
-        # Пункт Сохранить
-        self.actions["save"] = QtGui.QAction("Сохранить", self)
-        icon = QtGui.QPixmap(os.path.join(PKG_DIR, "icons/save.svg"))
-        self.actions["save"].setIcon(icon)
-        self.addAction(self.actions["save"])
-
-
 class Area(gl.GLMeshItem):
     def __init__(self,
                  pos=[0, 0, 0],
@@ -223,18 +190,7 @@ class Graph3DWidjet(gl.GLViewWidget):
         # Ставим вид по умолчанию
         self.goDefView()
 
-        self.ct_menu = GraphContextMenu()
-        self.ct_menu.actions["home"].triggered.connect(self.goDefView)
-        self.ct_menu.actions["clean"].triggered.connect(self.Clean)
-        self.ct_menu.actions["copy"].triggered.connect(self.keyCtrlCAction)
-        self.ct_menu.actions["save"].triggered.connect(self.saveAction)
-
         # self.__testDebug()
-
-        # area = Area(pos=[1100, -1900, 0], radius=500)
-        # self.addItem(area)
-        # self.areas.append(area)
-        # self.addArea(pos=[1100, -1900, 0], radius=500, color=pg.mkColor("g"),i=0)
 
     def addArea(self,
                 pos=[0, 0, 0],
@@ -251,7 +207,38 @@ class Graph3DWidjet(gl.GLViewWidget):
         self.areas.insert(i, area)
 
     def contextMenuEvent(self, ev: QtGui.QContextMenuEvent):
-        self.ct_menu.exec(self.mapToGlobal(ev.pos()))
+        # Само контекстное меню
+        contextMenu = QtWidgets.QMenu(self)
+
+        # Пункт Вид по умолчанию
+        homeAction = QtGui.QAction("Вид по умолчанию")
+        icon = QtGui.QPixmap(os.path.join(PKG_DIR, "icons/home.svg"))
+        homeAction.setIcon(icon)
+        homeAction.triggered.connect(self.goDefView)
+        contextMenu.addAction(homeAction)
+
+        # Пункт Очистить
+        cleanAction = QtGui.QAction("Очистить")
+        icon = QtGui.QPixmap(os.path.join(PKG_DIR, "icons/clean.svg"))
+        cleanAction.setIcon(icon)
+        cleanAction.triggered.connect(self.Clean)
+        contextMenu.addAction(cleanAction)
+
+        # Пункт Скопировать
+        copyAction = QtGui.QAction("Копировать")
+        icon = QtGui.QPixmap(os.path.join(PKG_DIR, "icons/copy.svg"))
+        copyAction.setIcon(icon)
+        copyAction.triggered.connect(self.keyCtrlCAction)
+        contextMenu.addAction(copyAction)
+
+        # Пункт Сохранить
+        saveAction = QtGui.QAction("Сохранить")
+        icon = QtGui.QPixmap(os.path.join(PKG_DIR, "icons/save.svg"))
+        saveAction.triggered.connect(self.saveAction)
+        saveAction.setIcon(icon)
+        contextMenu.addAction(saveAction)
+
+        contextMenu.exec(self.mapToGlobal(ev.pos()))
 
     def setMenu(self, menu):
         self.menu = menu
@@ -277,7 +264,7 @@ class Graph3DWidjet(gl.GLViewWidget):
 
         if hasattr(self, "menu"):
             self.menu.listCharts.clear()
-            self.menu.listCharts.hide()
+            # self.menu.listCharts.hide()
             self.menu.areasTable.Clean()
 
         # self.__testDebug()
@@ -353,6 +340,13 @@ class Graph3DWidjet(gl.GLViewWidget):
                 axi = self.axis[ax]
                 axi["min"] = min(chart["axis"][ax]["min"], axi["min"])
                 axi["max"] = max(chart["axis"][ax]["max"], axi["max"])
+        
+        if self.areas:
+            for area in self.areas:
+                for i, ax in enumerate("xy"):
+                    axi = self.axis[ax]
+                    axi["min"] = min(axi["min"], area.pos[i]-area.radius)
+                    axi["max"] = max(axi["max"], area.pos[i]+area.radius)
 
         # Размер решётки окрургляем до сотен
         for ax in "xyz":
@@ -884,6 +878,8 @@ class Graph3DWidjet(gl.GLViewWidget):
                     self.menu.listCharts.show()
 
     def reDraw(self):
+        if (not self.areas) and (not self.graphs):
+            self.Clean()
         # Перестраиваем сетку под новый график
         self.recalcAxis()
         self.paintGrid()
@@ -1210,8 +1206,8 @@ class ChartListWidget(QtWidgets.QListWidget):
 
         # Если не осталось элементов
         if not self.count():
-            # Скрываем список графиков
-            self.hide()
+            # # Скрываем список графиков
+            # self.hide()
             # Очищаем график
             self.graph.Clean()
         else:
@@ -1243,6 +1239,28 @@ class AreasTable(QtWidgets.QTableWidget):
 
         self.addAreaRow()
 
+    def contextMenuEvent(self, event):
+        # Создаем контекстное меню
+        contextMenu = QtWidgets.QMenu(self)
+
+        # Добавляем пункты меню
+        addAction = QtGui.QAction('Добавить')
+        icon = QtGui.QPixmap(os.path.join(PKG_DIR, "icons/add.svg"))
+        addAction.setIcon(icon)
+        addAction.triggered.connect(self.addAreaRow)
+
+        clearAction = QtGui.QAction('Очистить')
+        icon = QtGui.QPixmap(os.path.join(PKG_DIR, "icons/clean.svg"))
+        clearAction.setIcon(icon)
+        clearAction.triggered.connect(self.Clean)
+
+        contextMenu.addAction(addAction)
+        contextMenu.addAction(clearAction)
+
+        # Показываем контекстное меню
+        contextMenu.exec(event.globalPos())
+
+    @Slot()
     def addAreaRow(self, radius="", x="", y="", z="", color=pg.mkColor("g")):
         row = self.rowCount()
         # Если у нас последняя строка пустая, то заполняем её
@@ -1311,6 +1329,7 @@ class AreasTable(QtWidgets.QTableWidget):
         except:
             return
 
+    @Slot()
     def delAreaRow(self, del_button):
         try:
             i = self.del_btns.index(del_button)
@@ -1319,11 +1338,13 @@ class AreasTable(QtWidgets.QTableWidget):
             self.removeRow(i)
             area = self.graph.areas.pop(i)
             self.graph.removeItem(area)
+            self.graph.reDraw()
         except:
             pass
         if not self.rowCount():
             self.addAreaRow()
 
+    @Slot()
     def Clean(self):
         for row in range(self.rowCount(), -1, -1):
             try:
