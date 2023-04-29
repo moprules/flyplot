@@ -2,12 +2,16 @@ import os
 import numpy as np
 import pyqtgraph as pg
 import pyqtgraph.opengl as gl
-from PySide6.QtCore import Slot
-from PySide6 import QtWidgets, QtGui, QtCore
+from PySide6.QtCore import Slot, Qt
+from PySide6 import QtWidgets, QtGui
 from functools import partial
 from . parser import Parser3DGraphFile
 
 PKG_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+def get_icon(icon_name: str) -> QtGui.QPixmap:
+    return QtGui.QPixmap(os.path.join(PKG_DIR, f"icons/{icon_name}.svg"))
 
 
 class Text3DItem(gl.GLImageItem):
@@ -182,7 +186,7 @@ class Graph3DWidjet(gl.GLViewWidget):
         self.setSizePolicy(QtWidgets.QSizePolicy.Expanding,  # type: ignore
                            QtWidgets.QSizePolicy.Expanding)  # type: ignore
         # Фокус остаётся на графике
-        self.setFocusPolicy(QtCore.Qt.StrongFocus)  # type: ignore
+        self.setFocusPolicy(Qt.StrongFocus)  # type: ignore
 
         if data_file:
             self.addChart(data_file)
@@ -212,28 +216,28 @@ class Graph3DWidjet(gl.GLViewWidget):
 
         # Пункт Вид по умолчанию
         homeAction = QtGui.QAction("Вид по умолчанию")
-        icon = QtGui.QPixmap(os.path.join(PKG_DIR, "icons/home.svg"))
+        icon = get_icon("home")
         homeAction.setIcon(icon)
         homeAction.triggered.connect(self.goDefView)
         contextMenu.addAction(homeAction)
 
         # Пункт Очистить
         cleanAction = QtGui.QAction("Очистить")
-        icon = QtGui.QPixmap(os.path.join(PKG_DIR, "icons/clean.svg"))
+        icon = get_icon("clean")
         cleanAction.setIcon(icon)
         cleanAction.triggered.connect(self.Clean)
         contextMenu.addAction(cleanAction)
 
         # Пункт Скопировать
         copyAction = QtGui.QAction("Копировать")
-        icon = QtGui.QPixmap(os.path.join(PKG_DIR, "icons/copy.svg"))
+        icon = get_icon("copy")
         copyAction.setIcon(icon)
         copyAction.triggered.connect(self.keyCtrlCAction)
         contextMenu.addAction(copyAction)
 
         # Пункт Сохранить
         saveAction = QtGui.QAction("Сохранить")
-        icon = QtGui.QPixmap(os.path.join(PKG_DIR, "icons/save.svg"))
+        icon = get_icon("save")
         saveAction.triggered.connect(self.saveAction)
         saveAction.setIcon(icon)
         contextMenu.addAction(saveAction)
@@ -279,9 +283,9 @@ class Graph3DWidjet(gl.GLViewWidget):
         y = diff.y()
 
         self.mousePos = lpos
-        if ev.buttons() == QtCore.Qt.MouseButton.LeftButton:
+        if ev.buttons() == Qt.MouseButton.LeftButton:
             self.orbit(-x, y)
-        elif ev.buttons() == QtCore.Qt.MouseButton.MiddleButton:
+        elif ev.buttons() == Qt.MouseButton.MiddleButton:
             self.pan(x, y, 0, relative='view')
 
         self.paintGridByDirection()
@@ -340,7 +344,7 @@ class Graph3DWidjet(gl.GLViewWidget):
                 axi = self.axis[ax]
                 axi["min"] = min(chart["axis"][ax]["min"], axi["min"])
                 axi["max"] = max(chart["axis"][ax]["max"], axi["max"])
-        
+
         if self.areas:
             for area in self.areas:
                 for i, ax in enumerate("xy"):
@@ -1028,7 +1032,7 @@ class Graph3DWidjet(gl.GLViewWidget):
 
     def keyPressEvent(self, event: QtGui.QKeyEvent):
         # Если нажали Ctrl + C
-        if event.key() == QtCore.Qt.Key_C and event.modifiers() == QtCore.Qt.ControlModifier:  # type: ignore
+        if event.key() == Qt.Key_C and event.modifiers() == Qt.ControlModifier:  # type: ignore
             self.keyCtrlCAction()
         super().keyPressEvent(event)
 
@@ -1111,7 +1115,7 @@ class ColorButton(QtWidgets.QPushButton):
 
     def createIcon(self):
         pixmap = QtGui.QPixmap(self.size, self.size)
-        pixmap.fill(QtCore.Qt.transparent)
+        pixmap.fill(Qt.transparent)
 
         painter = QtGui.QPainter(pixmap)
         painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
@@ -1123,7 +1127,7 @@ class ColorButton(QtWidgets.QPushButton):
 
         brush = painter.brush()
         brush.setColor(color)
-        brush.setStyle(QtCore.Qt.SolidPattern)
+        brush.setStyle(Qt.SolidPattern)
         painter.setBrush(brush)
         painter.setPen(pen)
 
@@ -1161,7 +1165,7 @@ class ChartListWidget(QtWidgets.QListWidget):
                             QtWidgets.QSizePolicy.MinimumExpanding)
         # Кнопка убрать график
         del_button = QtWidgets.QPushButton()
-        icon = QtGui.QPixmap(os.path.join(PKG_DIR, "icons/del.svg"))
+        icon = get_icon("del")
         del_button.setIcon(icon)
         del_button.setFlat(True)
         del_button.setSizePolicy(QtWidgets.QSizePolicy.Fixed,
@@ -1229,7 +1233,7 @@ class AreasTable(QtWidgets.QTableWidget):
         self.setSizePolicy(QtWidgets.QSizePolicy.Minimum,
                            QtWidgets.QSizePolicy.Minimum)
 
-        self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
         self.cellChanged.connect(self.handleCellChanged)
 
@@ -1245,12 +1249,12 @@ class AreasTable(QtWidgets.QTableWidget):
 
         # Добавляем пункты меню
         addAction = QtGui.QAction('Добавить')
-        icon = QtGui.QPixmap(os.path.join(PKG_DIR, "icons/add.svg"))
+        icon = get_icon("add")
         addAction.setIcon(icon)
         addAction.triggered.connect(self.addAreaRow)
 
         clearAction = QtGui.QAction('Очистить')
-        icon = QtGui.QPixmap(os.path.join(PKG_DIR, "icons/clean.svg"))
+        icon = get_icon("clean")
         clearAction.setIcon(icon)
         clearAction.triggered.connect(self.Clean)
 
@@ -1285,7 +1289,7 @@ class AreasTable(QtWidgets.QTableWidget):
         if not isOld:
             color_button = ColorButton(color=pg.mkColor(color))
             color_button.setFlat(True)
-            color_button.setFocusPolicy(QtCore.Qt.NoFocus)
+            color_button.setFocusPolicy(Qt.NoFocus)
             color_button.setSizePolicy(QtWidgets.QSizePolicy.Minimum,
                                        QtWidgets.QSizePolicy.Minimum)
             color_button.clicked.connect(
@@ -1302,8 +1306,8 @@ class AreasTable(QtWidgets.QTableWidget):
         # Кнопка удаления строки
         if not isOld:
             del_button = QtWidgets.QPushButton()
-            del_button.setFocusPolicy(QtCore.Qt.NoFocus)
-            icon = QtGui.QPixmap(os.path.join(PKG_DIR, "icons/del.svg"))
+            del_button.setFocusPolicy(Qt.NoFocus)
+            icon = get_icon("del")
             del_button.setIcon(icon)
             del_button.setFlat(True)
             del_button.setSizePolicy(QtWidgets.QSizePolicy.Minimum,
@@ -1407,10 +1411,10 @@ class Menu3DLayout(QtWidgets.QVBoxLayout):
 
         self.graph = graph
 
-        self.setAlignment(QtCore.Qt.AlignTop)  # type: ignore
+        self.setAlignment(Qt.AlignTop)  # type: ignore
 
         buttonAddGraph = QtWidgets.QPushButton(text="Добавить")
-        icon = QtGui.QPixmap(os.path.join(PKG_DIR, "icons/add.svg"))
+        icon = get_icon("add")
         buttonAddGraph.setIcon(icon)
         buttonAddGraph.clicked.connect(self.loadChart)
         self.addWidget(buttonAddGraph)
@@ -1456,7 +1460,7 @@ class Graph3DWindow(QtWidgets.QWidget):
         super().__init__(*args, **kargs)
 
         self.setWindowTitle("Просмотр графиков")
-        icon = QtGui.QPixmap(os.path.join(PKG_DIR, "icons/grafic.svg"))
+        icon = get_icon("grafic")
         self.setWindowIcon(icon)
 
         # названия файла с данными для графика
@@ -1474,7 +1478,7 @@ class Graph3DWindow(QtWidgets.QWidget):
         # Добавим туда сам график
         self.__layout.addWidget(self.graph, 1)
         # Приклеиваем компоненты к верху виджета
-        self.__layout.setAlignment(QtCore.Qt.AlignTop)  # type: ignore
+        self.__layout.setAlignment(Qt.AlignTop)  # type: ignore
 
         if self.data_file:
             self.graph.addChart(self.data_file)
