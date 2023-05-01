@@ -5,34 +5,51 @@ import os
 import io
 
 
-class Parser3DGraphFile:
+def emptyChart():
+    chart = {}
+    # Обязательные элементы
+    chart["path"]: str = ""
+    chart["short_path"]: str = ""
+    chart["type"]: str = ""
+    chart["axis"]: dict = {}
+    chart["axis"]["x"]: dict = {
+        "name": "North", "dim": "m", "min": 0, "max": 0}
+    chart["axis"]["y"]: dict = {
+        "name": "East", "dim": "m", "min": 0, "max": 0}
+    chart["axis"]["z"]: dict = {
+        "name": "Altitude", "dim": "m", "min": 0, "max": 0}
+    # Массивы точек
+    chart["coords"]: list[list] = []
+    # Массив точек времени
+    chart["times"]: list = []
+
+    # Необязательные элементы
+    chart["name"]: str = ""
+    chart["cube"]: list = []
+    chart["areas"]: list[list] = []
+
+    # Ошибка в процессе парсинга
+    chart["err"]: str = ""
+    return chart
+
+
+def setPath(data_file, chart):
+    chart["path"] = os.path.abspath(data_file)
+    # получение имени файла
+    filename = os.path.basename(chart["path"])
+    # получение имени папки
+    dirname = os.path.basename(os.path.dirname(chart["path"]))
+    # короткий путь до файла
+    chart["short_path"] = os.path.join(dirname, filename)
+
+
+class Parser3DChartFile:
     ids = ["name", "type", "coords", "cube", "areas", "x", "y", "z"]
 
     def __init__(self):
         self.chart = {}
         # Обязательные элементы
-        self.chart["path"]: str = ""
-        self.chart["short_path"]: str = ""
-        self.chart["type"]: str = ""
-        self.chart["axis"]: dict = {}
-        self.chart["axis"]["x"]: dict = {
-            "name": "", "dim": "", "min": 0, "max": 0}
-        self.chart["axis"]["y"]: dict = {
-            "name": "", "dim": "", "min": 0, "max": 0}
-        self.chart["axis"]["z"]: dict = {
-            "name": "", "dim": "", "min": 0, "max": 0}
-        # Массивы точек
-        self.chart["coords"]: list = []
-        # Массив точек времени
-        self.chart["times"]: list = []
-
-        # Необязательные элементы
-        self.chart["name"]: str = ""
-        self.chart["cube"]: list = []
-        self.chart["areas"]: list[list[float, float, float, float]] = []
-
-        # Ошибка в процессе парсинга
-        self.chart["err"]: str = ""
+        self.chart = emptyChart()
 
     def skip(self, f: io.TextIOWrapper):
         id = ""
@@ -73,15 +90,6 @@ class Parser3DGraphFile:
         id = self.check_id(l)
         if id:
             self.do_by_id(id, l, f)
-
-    def setPath(self, data_file):
-        self.chart["path"] = os.path.abspath(data_file)
-        # получение имени файла
-        filename = os.path.basename(self.chart["path"])
-        # получение имени папки
-        dirname = os.path.basename(os.path.dirname(self.chart["path"]))
-        # короткий путь до файла
-        self.chart["short_path"] = os.path.join(dirname, filename)
 
     def setName(self, line: str):
         self.chart["name"] = line.split("name: ")[-1].strip()
@@ -163,7 +171,7 @@ class Parser3DGraphFile:
         return line
 
     def load(self, data_file: str):
-        self.setPath(data_file)
+        setPath(data_file, self.chart)
 
         with open(data_file, "r", encoding="utf-8") as f:
             id, line = self.skip(f)
