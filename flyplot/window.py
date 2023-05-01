@@ -327,8 +327,9 @@ class MenuLayout(QtWidgets.QVBoxLayout):
 
 
 class PlotWindow(QtWidgets.QWidget):
-    def __init__(self, chart_type="3D", data_file: str = "", *args, **kargs):
+    def __init__(self, main_window=None, chart_type="3D", data_file: str = "", *args, **kargs):
         super().__init__(*args, **kargs)
+        self.main_window = main_window
         self.chart_type = chart_type
 
         # Получаем окно 3d графика
@@ -382,7 +383,13 @@ class PlotWindow(QtWidgets.QWidget):
                 for (radius, *pos) in chart["areas"]:
                     self.plotter.addArea(pos=pos, radius=radius)
                     self.menu.areasTable.addArea(radius, *pos)
-    
+
+    def updChart(self, file_patch, **kargs):
+        if self.chart_type == "3D":
+            self.plotter.updChartPoints(file_patch, kargs["pos"])
+        else:
+            self.plotter.updChartPoints(file_patch, kargs["x"], kargs["y"])
+
     def cleanAction(self):
         self.menu.listCharts.clear()
         self.menu.areasTable.Clean()
@@ -397,3 +404,9 @@ class PlotWindow(QtWidgets.QWidget):
         for url in event.mimeData().urls():
             data_file = url.toLocalFile()
             self.addChart(data_file)
+
+    def closeEvent(self, event: QtGui.QCloseEvent):
+        # сообщаем главному окну, что детское окно было закрыто
+        if self.main_window:
+            self.main_window.wasClosed(self)
+        super().closeEvent(event)

@@ -160,6 +160,7 @@ class Plot3DWidjet(gl.GLViewWidget):
     def __init__(self, parent, *args, **kargs):
         super().__init__(*args, **kargs)
         self.my_parent = parent
+        self.ctx = self.context()
 
         # Задаём цвет фона по умолчанию стоит черный, будет белый
         self.setBackgroundColor("w")
@@ -828,7 +829,16 @@ class Plot3DWidjet(gl.GLViewWidget):
             i = self.findIndexChart(data_file)
         if i == -1:
             return
-        chart = self.chart[i]
+        chart = self.charts[i]
+        plt: gl.GLLinePlotItem = chart["plt"]
+        plt.setData(pos=chart["coords"], width=1, antialias=True)
+    
+    def updChartPoints(self, data_file: str, pos: list):
+        i = self.findIndexChart(data_file)
+        if i == -1:
+            return
+        chart = self.charts[i]
+        chart["coords"].extend(pos)
         plt: gl.GLLinePlotItem = chart["plt"]
         plt.setData(pos=chart["coords"], width=1, antialias=True)
 
@@ -837,7 +847,7 @@ class Plot3DWidjet(gl.GLViewWidget):
             i = self.findIndexChart(data_file)
         if i == -1:
             return
-        chart = self.chart[i]
+        chart = self.charts[i]
         plt: gl.GLLinePlotItem = chart["plt"]
         plt.setData(color=pg.mkColor(color), width=1, antialias=True)
 
@@ -873,7 +883,7 @@ class Plot3DWidjet(gl.GLViewWidget):
         self.removeItem(area)
 
     def reDraw(self):
-        if (not self.areas) and (not self.charts):
+        if (not self.charts):
             self.cleanAction()
             return
         # Перестраиваем сетку под новый график
@@ -1039,9 +1049,6 @@ class Plot3DWidjet(gl.GLViewWidget):
         # Ставим вид по умолчанию
         self.homeAction()
 
-        # if hasattr(self, "menu"):
-        #     self.menu.listCharts.clear()
-        #     self.menu.areasTable.Clean()
         self.my_parent.cleanAction()
 
     @ Slot()
