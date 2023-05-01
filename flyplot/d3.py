@@ -1,4 +1,3 @@
-
 import os
 import numpy as np
 import pyqtgraph as pg
@@ -7,7 +6,6 @@ from PySide6.QtCore import Slot, Qt
 from PySide6 import QtWidgets, QtGui
 
 from .icons import get_icon
-from .parser import Parser3DChartFile
 
 
 class Text3DItem(gl.GLImageItem):
@@ -160,7 +158,6 @@ class Plot3DWidjet(gl.GLViewWidget):
     def __init__(self, parent, *args, **kargs):
         super().__init__(*args, **kargs)
         self.my_parent = parent
-        self.ctx = self.context()
 
         # Задаём цвет фона по умолчанию стоит черный, будет белый
         self.setBackgroundColor("w")
@@ -686,7 +683,7 @@ class Plot3DWidjet(gl.GLViewWidget):
         # Переходим в вид по умолчанию, чтобы были видны
         # Все графики в пространстве
         self.homeAction()
-    
+
     def addLabel(self, ax, text, isForce=False):
         isFind = False
         # Настройки подписей для оси ax
@@ -832,7 +829,7 @@ class Plot3DWidjet(gl.GLViewWidget):
         chart = self.charts[i]
         plt: gl.GLLinePlotItem = chart["plt"]
         plt.setData(pos=chart["coords"], width=1, antialias=True)
-    
+
     def updChartPoints(self, data_file: str, pos: list):
         i = self.findIndexChart(data_file)
         if i == -1:
@@ -848,8 +845,9 @@ class Plot3DWidjet(gl.GLViewWidget):
         if i == -1:
             return
         chart = self.charts[i]
+        chart["color"] = pg.mkColor(color)
         plt: gl.GLLinePlotItem = chart["plt"]
-        plt.setData(color=pg.mkColor(color), width=1, antialias=True)
+        plt.setData(color=chart["color"], width=1, antialias=True)
 
     def delChart(self, i: int = None, data_file: str = None):
         if i is None:

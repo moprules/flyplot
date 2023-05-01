@@ -5,7 +5,29 @@ import os
 import io
 
 
-def emptyChart():
+def empty2DChart():
+    chart = {}
+    # Обязательные элементы
+    chart["path"]: str = ""
+    chart["short_path"]: str = ""
+    chart["type"]: str = ""
+    chart["axis"]: dict = {}
+    chart["axis"]["x"]: dict = {"name": "", "dim": ""}
+    chart["axis"]["y"]: dict = {"name": "", "dim": ""}
+    # Массивы точек
+    chart["x"]: list = []
+    chart["y"]: list = []
+
+    # Необязательные элементы
+    chart["name"]: str = ""
+    chart["areas"]: list[list] = []
+
+    # Ошибка в процессе парсинга
+    chart["err"]: str = ""
+    return chart
+
+
+def empty3DChart():
     chart = {}
     # Обязательные элементы
     chart["path"]: str = ""
@@ -13,11 +35,11 @@ def emptyChart():
     chart["type"]: str = ""
     chart["axis"]: dict = {}
     chart["axis"]["x"]: dict = {
-        "name": "North", "dim": "m", "min": 0, "max": 0}
+        "name": "", "dim": "", "min": 0, "max": 0}
     chart["axis"]["y"]: dict = {
-        "name": "East", "dim": "m", "min": 0, "max": 0}
+        "name": "", "dim": "", "min": 0, "max": 0}
     chart["axis"]["z"]: dict = {
-        "name": "Altitude", "dim": "m", "min": 0, "max": 0}
+        "name": "", "dim": "", "min": 0, "max": 0}
     # Массивы точек
     chart["coords"]: list[list] = []
     # Массив точек времени
@@ -43,13 +65,112 @@ def setPath(data_file, chart):
     chart["short_path"] = os.path.join(dirname, filename)
 
 
+class Parser2DChartFile:
+    ids = ["name", "type", "coords", "areas", "x", "y"]
+
+    def __init__(self):
+        self.chart = empty2DChart()
+
+    def skip(self, f: io.TextIOWrapper):
+        id = ""
+        line = f.readline()
+        while line:
+            idd = self.check_id(line)
+            if idd:
+                id = idd
+                break
+            line = f.readline()
+        return id, line.strip()
+
+    def check_id(self, line: str):
+        line = line.strip()
+        id = ""
+        for idd in self.ids:
+            if line.startswith(idd):
+                id = idd
+                break
+        return id
+
+    def do_by_id(self, id: str, line: str, f: io.TextIOWrapper):
+
+        l: str = ""
+        if id == "name":
+            l = self.setName(line)
+        elif id == "type":
+            l = self.setType(line)
+        elif id in "xy":
+            l = self.setAxis(id, line)
+        elif id == "areas":
+            l = self.setAreas(f)
+        elif id == "coords":
+            l = self.setCoords(f)
+
+        if self.chart["err"]:
+            return
+
+        id = self.check_id(l)
+        if id:
+            self.do_by_id(id, l, f)
+
+    def setName(self, line: str):
+        self.chart["name"] = line.split("name: ")[-1].strip()
+        return ""
+
+    def setType(self, line: str):
+        self.chart["type"] = line.split("type: ")[-1].strip().upper()
+        if self.chart["type"] != "2D":
+            self.chart["err"] = f'График типа "{self.chart["type"]}", а не 2D'
+
+        return ""
+
+    def setAxis(self, axi: str, line: str):
+        # Получаем ось - x, y, z
+        _, data = line.split(":")
+        # Поолучаем её название и размерность
+        name, dim = map(lambda s: s.strip(), data.split("|"))
+        self.chart["axis"][axi]["name"] = name
+        self.chart["axis"][axi]["dim"] = dim
+        return ""
+
+    def setAreas(self, f: io.TextIOWrapper):
+        line = f.readline()
+        while line and line[0].isdigit():
+            circle = [float(x) for x in line.split()]
+            self.chart["areas"].append(circle)
+            line = f.readline()
+        return line
+
+    def setCoords(self, f: io.TextIOWrapper):
+        line = f.readline()
+        while line and line[0].isdigit():
+            # Очищаем строку
+            line = line.strip()
+            # Обрабатываем координаты точек
+            x, y = map(float, line.split("->"))
+            self.chart["x"].append(x)
+            self.chart["y"].append(y)
+            line = f.readline()
+        return line
+
+    def load(self, data_file: str):
+        setPath(data_file, self.chart)
+
+        with open(data_file, "r", encoding="utf-8") as f:
+            id, line = self.skip(f)
+            while id:
+                if self.chart["err"]:
+                    return self.chart
+                self.do_by_id(id, line, f)
+                id, line = self.skip(f)
+
+        return self.chart
+
+
 class Parser3DChartFile:
     ids = ["name", "type", "coords", "cube", "areas", "x", "y", "z"]
 
     def __init__(self):
-        self.chart = {}
-        # Обязательные элементы
-        self.chart = emptyChart()
+        self.chart = empty3DChart()
 
     def skip(self, f: io.TextIOWrapper):
         id = ""
@@ -86,6 +207,9 @@ class Parser3DChartFile:
             l = self.setAreas(f)
         elif id == "coords":
             l = self.setCoords(f)
+
+        if self.chart["err"]:
+            return
 
         id = self.check_id(l)
         if id:
@@ -176,6 +300,8 @@ class Parser3DChartFile:
         with open(data_file, "r", encoding="utf-8") as f:
             id, line = self.skip(f)
             while id:
+                if self.chart["err"]:
+                    return self.chart
                 self.do_by_id(id, line, f)
                 id, line = self.skip(f)
 

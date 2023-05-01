@@ -6,7 +6,8 @@ from functools import partial
 
 from .icons import get_icon
 from .d3 import Plot3DWidjet
-from .parser import Parser3DChartFile
+from .d2 import Plot2DWidjet
+from .parser import Parser2DChartFile, Parser3DChartFile
 
 
 class ColorButton(QtWidgets.QPushButton):
@@ -51,9 +52,10 @@ class ColorButton(QtWidgets.QPushButton):
 
 class ChartListWidget(QtWidgets.QListWidget):
 
-    def __init__(self, plotter: Plot3DWidjet, *args, **kargs):
+    def __init__(self, plotter: Plot3DWidjet| Plot2DWidjet, *args, **kargs):
         super().__init__(*args, **kargs)
         self.plotter = plotter
+        self.setMinimumWidth(300)
 
         self.setSizePolicy(QtWidgets.QSizePolicy.Minimum,
                            QtWidgets.QSizePolicy.Minimum)
@@ -293,7 +295,7 @@ class MenuLayout(QtWidgets.QVBoxLayout):
     def __init__(self, parent, *args, **kargs):
         super().__init__(*args, **kargs)
         self.my_parent = parent
-        self.plotter: Plot3DWidjet = self.my_parent.plotter
+        self.plotter: Plot3DWidjet| Plot2DWidjet = self.my_parent.plotter
 
         self.setAlignment(Qt.AlignTop)  # type: ignore
 
@@ -336,7 +338,7 @@ class PlotWindow(QtWidgets.QWidget):
         if self.chart_type == "3D":
             self.plotter = Plot3DWidjet(self)
         else:
-            self.plotter = Plot3DWidjet(self)
+            self.plotter = Plot2DWidjet(self)
 
         # Задаём лаяут по умолчанию
         self.__layout = QtWidgets.QHBoxLayout(self)
@@ -363,7 +365,7 @@ class PlotWindow(QtWidgets.QWidget):
         if self.chart_type == "3D":
             p = Parser3DChartFile()
         else:
-            p = Parser3DChartFile()
+            p = Parser2DChartFile()
         chart = p.load(data_file)
         if chart["err"]:
             msg_box = QtWidgets.QMessageBox()
