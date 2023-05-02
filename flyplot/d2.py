@@ -166,6 +166,9 @@ class Plot2DWidjet(pg.PlotWidget):
         self.removeItem(plt)
         self.homeAction()
 
+        if not self.charts:
+            self.cleanAction()
+
     def addArea(self,
                 pos=[0, 0, 0],
                 radius=1.0,
@@ -232,6 +235,9 @@ class Plot2DWidjet(pg.PlotWidget):
         self.clear()
         self.charts = []
         self.areas = []
+
+        self.setLabel(axis='left', text="")
+        self.setLabel(axis='bottom', text="")
         # Ставим вид по умолчанию
         self.homeAction()
 
@@ -257,3 +263,6 @@ class Plot2DWidjet(pg.PlotWidget):
             msg_box.setWindowTitle("Ошибка")
             msg_box.setText("На графике ничего нет")
             msg_box.exec()
+    
+    def getDescription(self):
+        return " | ".join(chart["name"] for chart in self.charts)

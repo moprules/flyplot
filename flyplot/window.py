@@ -412,3 +412,6 @@ class PlotWindow(QtWidgets.QWidget):
         if self.main_window:
             self.main_window.wasClosed(self)
         super().closeEvent(event)
+    
+    def getDescription(self):
+        return self.plotter.getDescription()

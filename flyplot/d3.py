@@ -1089,3 +1089,6 @@ class Plot3DWidjet(gl.GLViewWidget):
 
     def mousePressEvent(self, ev):
         self.mousePos = ev.position() if hasattr(ev, 'position') else ev.localPos()
+    
+    def getDescription(self):
+        return " | ".join(chart["name"] for chart in self.charts)
