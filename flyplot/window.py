@@ -1,5 +1,6 @@
 import os
 import pyqtgraph as pg
+from PySide6 import QtCore
 from PySide6.QtCore import Slot, Qt
 from PySide6 import QtWidgets, QtGui
 from functools import partial
@@ -116,6 +117,8 @@ class AreasTable(QtWidgets.QTableWidget):
     def __init__(self, plotter: Plot3DWidjet):
         super().__init__()
 
+        self.setMinimumWidth(300)
+
         self.plotter = plotter
         self.del_btns = []
         self.color_btns = []
@@ -124,8 +127,8 @@ class AreasTable(QtWidgets.QTableWidget):
         self.setRowCount(0)
         self.setColumnCount(6)
 
-        self.setSizePolicy(QtWidgets.QSizePolicy.Minimum,
-                           QtWidgets.QSizePolicy.Minimum)
+        self.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
+                           QtWidgets.QSizePolicy.Expanding)
 
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
@@ -210,7 +213,16 @@ class AreasTable(QtWidgets.QTableWidget):
             self.setCellWidget(row, 5, del_button)
             self.del_btns.append(del_button)
 
+        self.myResize()
+    
+    def myResize(self):
+        width = 300
+        a = self.sizeHint().width()
         self.resizeColumnsToContents()
+        # средня ширина столбца
+        average_width = width // self.columnCount() - 3
+        for i in range(self.columnCount()):
+            self.setColumnWidth(i, average_width)
 
     @Slot()
     def changeColor(self, color_button: ColorButton):
