@@ -78,7 +78,7 @@ class Plot2DWidjet(pg.PlotWidget):
         self.homeAction()
 
     def addChart(self, chart: dict):
-        stdcolors = "brkgy"
+        stdcolors = "bgryk"
         cindex = len(self.charts) % len(stdcolors)
         chart["color"] = stdcolors[cindex]
         # Создаём объект 2D графика

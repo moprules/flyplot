@@ -652,7 +652,7 @@ class Plot3DWidjet(gl.GLViewWidget):
         valMove.myTranslate(0, ddY, 0)
 
     def addChart(self, chart: dict):
-        stdcolors = "brkgy"
+        stdcolors = "bgryk"
         cindex = len(self.charts) % len(stdcolors)
         chart["color"] = stdcolors[cindex]
         # Создаём объект 3D графика
