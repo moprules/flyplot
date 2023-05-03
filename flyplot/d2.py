@@ -50,7 +50,7 @@ class Plot2DWidjet(pg.PlotWidget):
         # Минимальные размеры графика
         min_width = round(screen_size.width() / 2.5)
         min_height = round(screen_size.height() / 2)
-        self.setMinimumSize(min_width, min_height)
+        self.setGeometry(0, 0, min_width, min_height)
         # график не может быть больше размеров экрана
         self.setMaximumSize(screen_size)
         # график можно расширять

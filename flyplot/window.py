@@ -317,8 +317,21 @@ class MenuLayout(QtWidgets.QVBoxLayout):
         buttonAddChart.clicked.connect(self.addChart)
         self.addWidget(buttonAddChart)
 
+        labelGrafics =  QtWidgets.QLabel(text="Графики")
+        labelGrafics.setAlignment(Qt.AlignLeft)
+        labelGrafics.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding,
+                                   QtWidgets.QSizePolicy.Minimum)
+        self.addWidget(labelGrafics)
+
         self.listCharts = ChartListWidget(self.plotter)
         self.addWidget(self.listCharts)
+
+
+        labelArea =  QtWidgets.QLabel(text="Области")
+        labelArea.setAlignment(Qt.AlignLeft)
+        labelArea.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding,
+                                   QtWidgets.QSizePolicy.Minimum)
+        self.addWidget(labelArea)
 
         self.areasTable = AreasTable(self.plotter)
         self.addWidget(self.areasTable)
