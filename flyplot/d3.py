@@ -149,6 +149,9 @@ class Area3D(gl.GLMeshItem):
         self.translate(*self.pos)
         self.translate(0, 0, -self.length)
 
+        # ЧТобы рисовалось раньше графика
+        self.setDepthValue(-100)
+
     def setColor(self, c):
         self.color = pg.mkColor(c)
         super().setColor(c)
@@ -868,8 +871,6 @@ class Plot3DWidjet(gl.GLViewWidget):
             i = len(self.areas)
         area = Area3D(pos=pos, radius=radius, color=color)
         self.addItem(area)
-        # ЧТобы рисовалось раньше графика
-        area.setDepthValue(-100)
         self.areas.insert(i, area)
 
     def setAreaColor(self, color, i: int = None):

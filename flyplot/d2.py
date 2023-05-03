@@ -1,39 +1,37 @@
 import os
-import numpy as np
 import pyqtgraph as pg
-import pyqtgraph.opengl as gl
 from PySide6 import QtCore
 from PySide6.QtCore import Slot, Qt
 from PySide6 import QtWidgets, QtGui
 
 from .icons import get_icon
 
-
-class Area2D(gl.GLMeshItem):
+class Area2D(QtWidgets.QGraphicsEllipseItem):
     def __init__(self,
                  pos=[0, 0, 0],
                  radius=50,
-                 color=pg.mkColor("g"),
-                 length=0.1):
-        self.pos = pos
+                 color=pg.mkColor("g")):
+        
+        self.my_pos = pos
         self.radius = radius
-        self.length = length
-        self.color = color
-        cylinder = gl.MeshData.cylinder(rows=50,
-                                        cols=50,
-                                        radius=[0, self.radius],
-                                        length=self.length)
-        super().__init__(meshdata=cylinder,
-                         smooth=True,
-                         shader='balloon',
-                         color=pg.mkColor(self.color),
-                         glOptions='opaque')
-        self.translate(*self.pos)
-        self.translate(0, 0, -self.length)
+        self.color = pg.mkColor(color)
+
+        x = self.my_pos[0] - self.radius
+        y = self.my_pos[1] - self.radius
+        w = self.radius * 2
+        h = self.radius * 2
+
+        super().__init__(x, y, w, h)
+
+        self.setPen(pg.mkPen((0, 0, 0, 100)))
+
+        self.setColor(self.color)
+        self.setZValue(-100)
+
 
     def setColor(self, c):
         self.color = pg.mkColor(c)
-        super().setColor(c)
+        self.setBrush(pg.mkBrush(self.color,))
 
 
 class Plot2DWidjet(pg.PlotWidget):
@@ -178,9 +176,8 @@ class Plot2DWidjet(pg.PlotWidget):
             i = len(self.areas)
         area = Area2D(pos=pos, radius=radius, color=color)
         self.addItem(area)
-        # ЧТобы рисовалось раньше графика
-        area.setDepthValue(-100)
         self.areas.insert(i, area)
+        self.homeAction()
 
     def setAreaColor(self, color, i: int = None):
         area = self.areas[i]
@@ -189,6 +186,7 @@ class Plot2DWidjet(pg.PlotWidget):
     def delArea(self, i: int):
         area = self.areas.pop(i)
         self.removeItem(area)
+        self.homeAction()
 
     def contextMenuEvent(self, ev: QtGui.QContextMenuEvent):
         # Само контекстное меню
