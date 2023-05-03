@@ -311,17 +311,11 @@ class MenuLayout(QtWidgets.QVBoxLayout):
 
         self.setAlignment(Qt.AlignTop)  # type: ignore
 
-        buttonAddChart = QtWidgets.QPushButton(text="Добавить")
+        buttonAddChart = QtWidgets.QPushButton(text="Добавить График")
         icon = get_icon("add")
         buttonAddChart.setIcon(icon)
         buttonAddChart.clicked.connect(self.addChart)
         self.addWidget(buttonAddChart)
-
-        labelGrafics =  QtWidgets.QLabel(text="Графики")
-        labelGrafics.setAlignment(Qt.AlignLeft)
-        labelGrafics.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding,
-                                   QtWidgets.QSizePolicy.Minimum)
-        self.addWidget(labelGrafics)
 
         self.listCharts = ChartListWidget(self.plotter)
         self.addWidget(self.listCharts)
