@@ -162,6 +162,7 @@ class Plot2DWidjet(pg.PlotWidget):
         chart = self.charts.pop(i)
         plt = chart["plt"]
         self.removeItem(plt)
+        self.setLegend()
         self.homeAction()
 
         if not self.charts:
