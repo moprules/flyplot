@@ -253,8 +253,12 @@ class AreasTable(QtWidgets.QTableWidget):
 
     @Slot()
     def Clean(self):
-        for del_button in self.del_btns:
-            self.delArea(del_button)
+        self.del_btns.clear()
+        self.color_btns.clear()
+        self.clear()
+        self.setHorizontalHeaderLabels(self.headers)
+        self.setRowCount(0)
+        self.addArea()
 
     @Slot()
     def handleCellChanged(self, row, col):
