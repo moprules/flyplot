@@ -134,7 +134,7 @@ class Parser2DChartFile:
 
     def setAreas(self, f: io.TextIOWrapper):
         line = f.readline()
-        while line and line[0].isdigit():
+        while line and (line[0].isdigit() or line[0] == "-"):
             circle = [float(x) for x in line.split()]
             self.chart["areas"].append(circle)
             line = f.readline()
@@ -142,7 +142,7 @@ class Parser2DChartFile:
 
     def setCoords(self, f: io.TextIOWrapper):
         line = f.readline()
-        while line and line[0].isdigit():
+        while line and (line[0].isdigit() or line[0] == "-"):
             # Очищаем строку
             line = line.strip()
             # Обрабатываем координаты точек
@@ -237,7 +237,7 @@ class Parser3DChartFile:
 
     def setCube(self, f: io.TextIOWrapper):
         line = f.readline()
-        while line and line[0].isdigit():
+        while line and (line[0].isdigit() or line[0] == "-"):
             point = [float(x) for x in line.split()]
             self.chart["cube"].append(point)
             line = f.readline()
@@ -252,7 +252,7 @@ class Parser3DChartFile:
 
     def setAreas(self, f: io.TextIOWrapper):
         line = f.readline()
-        while line and line[0].isdigit():
+        while line and (line[0].isdigit() or line[0] == "-"):
             circle = [float(x) for x in line.split()]
             self.chart["areas"].append(circle)
             line = f.readline()
@@ -271,7 +271,7 @@ class Parser3DChartFile:
         p2 = [self.chart["axis"][ax]["max"] for ax in "xyz"]
 
         line = f.readline()
-        while line and line[0].isdigit():
+        while line and (line[0].isdigit() or line[0] == "-"):
             # Очищаем строку
             line = line.strip()
             # Обрабатываем координаты точек
